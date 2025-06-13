@@ -14,6 +14,7 @@ Key features and changes:
 All examples are configured with process signal listeners to demonstrate event handling
 
 - [File Log Writer](./src/examples/file.ts)
+- [File Log Writer](./src/examples/splunkHec.ts)
 
 ## Custom log writers
 
@@ -25,8 +26,11 @@ Custom log writers can be created by extending `LogWriter` class:
 - Define `write = (data: LogWriterData): void = {...}` method
 
 Call to `log4st.shutdown()` will trigger `LogWriter.shutdown(cb)` call for all
-registered log writers. Log writer is registered when `LogWriter.attachToLogger()`
-function is executed. Pending writes might be lost unless proper handling logic is
+registered log writers.
+
+Log writer is registered when `LogWriter.attachToLogger()` function is executed.
+
+Pending writes might be lost unless proper handling logic is
 added to log writer `write` and `shutdown` methods to track pending writes
 and wait for completion before proceeding with `shutdown` call
 
