@@ -1,0 +1,53 @@
+{
+  "files.exclude": {
+    "**/.vscode/**": false,
+    "**/package.json": false,
+    "**/yarn.lock": false,
+
+    "**/.yarn": true,
+    "**/build/**": true,
+    "**/dist/**": true,
+    "**/node_modules/**": true,
+    "**/.eslintcache": true
+  },
+  "search.exclude": {
+    "**/tsconfig.tsbuildinfo": true,
+    "**/yarn.lock": true
+  },
+  "files.associations": {
+    "*.jsx": "javascriptreact"
+  },
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "launch": {},
+  "prettier.enable": true,
+  "prettier.enableDebugLogs": false,
+  "prettier.configPath": "./.prettierrc.mjs",
+  "[jsonc]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "debug.showBreakpointsInOverviewRuler": false,
+  "editor.glyphMargin": true,
+  "diffEditor.renderIndicators": true,
+  "editor.minimap.enabled": false,
+  "search.useIgnoreFiles": false,
+  "files.trimFinalNewlines": true,
+  "files.eol": "\n",
+  "prettier.endOfLine": "lf",
+  "editor.insertSpaces": false,
+  "editor.tabSize": 2,
+  "typescript.tsdk": "../../node_modules/typescript/lib",
+  "editor.wordBasedSuggestions": "off",
+  "editor.suggest.showSnippets": false,
+  "eslint.useFlatConfig": true,
+  "eslint.validate": ["javascript", "typescript"],
+  "cSpell.words": [
+    "allexport",
+    "logWriter",
+    "deserialize",
+    "listeners",
+    "multiprocess",
+    "serialize",
+    "sourcetype"
+  ]
+}
