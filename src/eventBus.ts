@@ -189,6 +189,6 @@ class EventBus {
       }
     }
 
-    logWritersToCheck.forEach((v) => v.shutdown(complete))
+    logWritersToCheck.forEach((v) => v._shutdown(complete))
   }
 }

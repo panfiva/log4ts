@@ -85,7 +85,7 @@ logWriter.attachToLogger(logger, 'DEBUG', (event, logWriterName, _logWriterConfi
     host,
     source,
     sourcetype: 'json',
-    time: Math.floor(event.payload.startTime.getTime() / 1000),
+    time: event.payload.startTime.getTime() / 1000,
     index,
   }
 

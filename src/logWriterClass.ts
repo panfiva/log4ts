@@ -4,9 +4,15 @@ import type { Logger } from './logger'
 
 import { getEventBus } from './eventBus'
 
-type WriteMethod<D> = (data: D) => Promise<void> | void
+import debugLib from 'debug'
+const debugShutdown = debugLib('log4ts:logWriter:shutdown')
+const debugLogWriter = debugLib('log4ts:logWriter:_write')
+
+type WriteMethod<D> = ((data: D) => Promise<void>) | ((data: D) => void)
 
 export type ShutdownCb = ((e?: Error) => void) | ((e?: Error) => Promise<void>)
+
+type ShutdownFn = ((cb?: ShutdownCb) => Promise<void>) | ((cb?: ShutdownCb) => void)
 
 export type TransformerFn<
   TData extends Array<LoggerArg>,
@@ -27,6 +33,9 @@ export abstract class LogWriter<
 > {
   name: TNameA
 
+  /** contains references to all active writes */
+  protected activeWrites = new Set<object>()
+
   /** logWriter configurations */
   abstract config: TConfigA
 
@@ -34,8 +43,27 @@ export abstract class LogWriter<
     this.name = name
   }
 
+  /** use by EventBus to trigger shutdown */
+  _shutdown: ShutdownFn = async (cb) => {
+    debugShutdown(
+      `[${this.name}]: shutdown event received; ${this.activeWrites.size} pending writes`
+    )
+
+    const start = Date.now()
+    const maxWait = 5000
+
+    // Wait for all writes up to 5 seconds
+    while (this.activeWrites.size > 0 && Date.now() - start < maxWait) {
+      await new Promise((resolve) => setTimeout(resolve, 10))
+    }
+
+    debugShutdown(`[${this.name}]: initiating shutdown; ${this.activeWrites.size} pending writes`)
+
+    return this.shutdown(cb)
+  }
+
   /** function executed on logWriter shutdown */
-  shutdown: (cb?: ShutdownCb) => Promise<void> | void = (cb) => {
+  shutdown: ShutdownFn = (cb) => {
     if (cb) cb()
   }
 
@@ -65,7 +93,7 @@ export abstract class LogWriter<
     ) {
       const data = transformer(event, this.name, this.config)
 
-      this.write(data)
+      this._write(data)
     }.bind(this)
 
     getEventBus().then((eventBus) => {
@@ -77,6 +105,32 @@ export abstract class LogWriter<
         logger,
       })
     })
+  }
+
+  /**
+   * This function is executed when messages are received by log writer;
+   * This function performs the following:
+   * - Adds event to `this.activeWrites`
+   * - calls `this.write()`
+   * - removes event from `this.activeWrites`
+   *
+   * execution is triggered by `EventBus.sendToListeners()` function call;
+   * listeners are added by to `EventBus.listeners()` by `LogWriterClass.attachToLogger()`;
+   */
+  private _write: WriteMethod<TFormattedData> = async (data: TFormattedData) => {
+    const pointer = {}
+    this.activeWrites.add(pointer)
+
+    try {
+      await this.write(data)
+    } catch (err: any) {
+      debugLogWriter(`[${this.name}]: error writing request`, err)
+    } finally {
+      debugLogWriter(`[${this.name}]: write complete`)
+      this.activeWrites.delete(pointer)
+    }
+
+    return
   }
 
   /**

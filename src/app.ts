@@ -11,11 +11,10 @@ const token: string | undefined = process.env.SPLUNK_HEC_TOKEN
 if (!baseURL) throw new Error('SPLUNK_COLLECTOR_URL env variable is empty')
 if (!token) throw new Error('defined SPLUNK_HEC_TOKEN  env variable is empty')
 
-// send SIGINT after 2 seconds to demostrate event handlers
-// see configure_process
+// send SIGINT
 setTimeout(() => {
   process.kill(process.pid, 'SIGINT')
-}, 2 * 1000)
+}, 500)
 
 type Payload = {
   origin: 'user' | 'service'
@@ -78,7 +77,7 @@ logWriter.attachToLogger(logger, 'DEBUG', (event, logWriterName, _logWriterConfi
     host,
     source,
     sourcetype: 'json',
-    time: Math.floor(event.payload.startTime.getTime() / 1000),
+    time: event.payload.startTime.getTime() / 1000,
     index,
   }
 
@@ -87,7 +86,7 @@ logWriter.attachToLogger(logger, 'DEBUG', (event, logWriterName, _logWriterConfi
 
 const data: SplunkLoggerData = {
   type: 'exec',
-  host: 'host-2',
+  host: 'host',
   source: 'consumer-server:ezdemo-create.js',
   origin: 'user',
   message: 'ec2-workspace-create:success',
@@ -106,4 +105,11 @@ const data: SplunkLoggerData = {
   },
 }
 
-logger.info('test', data)
+let i = 0
+const intervalId = setInterval(() => {
+  i++
+  logger.info('test', { ...data, message: `message ${i} ${new Date().toISOString()}` })
+  if (i === 50) {
+    clearInterval(intervalId)
+  }
+}, 50)
