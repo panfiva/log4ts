@@ -22,9 +22,4 @@ export class ConsoleLogWriter<
   write = (data: TFormattedData) => {
     console.log(...data)
   }
-
-  shutdown = (cb?: ShutdownCb) => {
-    // shutdown function must always execute cb on exit
-    if (cb) cb()
-  }
 }

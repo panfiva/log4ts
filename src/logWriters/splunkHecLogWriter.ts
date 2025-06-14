@@ -38,21 +38,22 @@ export class SplunkHecLogWriter<
 > extends LogWriter<TFormattedData, TConfigA, TNameA> {
   config: TConfigA
 
-  private activeWrites = new Set<object>()
-
   constructor(name: TNameA, config: TConfigA) {
     super(name)
 
     this.config = config
 
-    debug(`Creating splunk HEC log writer '${name}' for ${this.config.baseURL}`)
+    debug(`[${this.name}]: initializing log writer for ${this.config.baseURL}`)
   }
 
-  private _write = async (data: TFormattedData) => {
+  write = async (data: TFormattedData) => {
     const payload = { ...data }
     if (!payload.source.startsWith('http:')) payload.source = `http:${payload.source}`
 
-    debug(`LogWriter '${this.name}' writing data`)
+    debug(`[${this.name}]: sending data`)
+
+    await new Promise((resolve) => setTimeout(resolve, 200))
+
     const ret = await axios
       .post('/services/collector/event', payload, {
         baseURL: this.config.baseURL,
@@ -63,40 +64,16 @@ export class SplunkHecLogWriter<
         httpsAgent: agent,
         timeout: 15000,
       })
+      .then((v) => {
+        debug(`[${this.name}]: event send successfully`)
+        return v
+      })
       .catch((e) => {
         const err = transformAxiosError(e)
+        debug(`[${this.name}]: event write failed`)
         throw err
       })
 
     return ret
-  }
-
-  write = (data: TFormattedData) => {
-    debug(`LogWriter '${this.name}' data received`)
-
-    const pointer = {}
-    this.activeWrites.add(pointer)
-    this._write(data)
-      .catch((err) => {
-        debug(`Error in SplunkHecLogWriter.write: ${err.name} ${err.status} ${err.code}`)
-      })
-      .finally(() => {
-        debug(`LogWriter '${this.name}' write complete`)
-        this.activeWrites.delete(pointer)
-      })
-  }
-
-  shutdown = async (cb?: ShutdownCb) => {
-    debug(`shutdown event received; ${this.activeWrites.size} pending writes`)
-
-    // Wait for all writes to complete
-    while (this.activeWrites.size > 0) {
-      await new Promise((resolve) => setTimeout(resolve, 10))
-    }
-
-    debug(`shutdown complete`)
-
-    // shutdown function must always execute cb on exit
-    if (cb) cb()
   }
 }
