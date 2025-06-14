@@ -1,25 +1,26 @@
-import { LogWriter, ShutdownCb } from '../logWriterClass'
+import { LogWriter } from '../logWriterClass'
 
 import debugLib from 'debug'
 const debug = debugLib('log4ts:logWriter:console')
 
 type EmptyObject = { [K in any]: never }
 
-export class ConsoleLogWriter<
-  TFormattedData extends any[],
-  TNameA extends string = string,
-> extends LogWriter<TFormattedData, EmptyObject, TNameA> {
+export class ConsoleLogWriter<TFormattedData extends any[]> extends LogWriter<
+  TFormattedData,
+  EmptyObject
+> {
   config: EmptyObject
 
-  constructor(name: TNameA) {
+  constructor(name: string) {
     super(name)
 
     this.config = {}
 
-    debug(`Creating console log writer '${name}'`)
+    debug(`[${name}]: Creating console log writer'`)
   }
 
   write = (data: TFormattedData) => {
+    debug(`[${this.name}]: writing log'`)
     console.log(...data)
   }
 }

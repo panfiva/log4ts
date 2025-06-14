@@ -16,7 +16,7 @@ setTimeout(() => {
 // Logger will only accept one parameter
 type LoggerData = [string | number]
 
-const logger = new Logger<LoggerData>({
+const logger = new Logger<LoggerData, never>({
   loggerName: 'fileLogger',
   level: 'DEBUG',
 })

@@ -10,7 +10,7 @@ const debug = debugLib('log4ts:logWriter:file')
 const eol = os.EOL
 
 let mainSighupListenerStarted = false
-const sighupListeners = new Set<FileLogWriter<any>>()
+const sighupListeners = new Set<FileLogWriter>()
 
 function mainSighupHandler() {
   sighupListeners.forEach((logWriter) => {
@@ -29,15 +29,11 @@ export type FileLogWriterConfig = {
 /** data accepted by logWriter */
 type FileLogWriterData = string
 
-export class FileLogWriter<TNameA extends string = string> extends LogWriter<
-  FileLogWriterData,
-  FileLogWriterConfig,
-  TNameA
-> {
+export class FileLogWriter extends LogWriter<FileLogWriterData, FileLogWriterConfig> {
   config: Required<FileLogWriterConfig>
   private writer: RollingFileWriteStream
 
-  constructor(name: TNameA, config: FileLogWriterConfig) {
+  constructor(name: string, config: FileLogWriterConfig) {
     super(name)
 
     if (typeof config.filename !== 'string' || config.filename.length === 0) {

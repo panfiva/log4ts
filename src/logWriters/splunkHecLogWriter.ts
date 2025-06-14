@@ -34,11 +34,10 @@ type TConfigA = SplunkHecLogWriterConfig
 
 export class SplunkHecLogWriter<
   TFormattedData extends SplunkData<Record<string, any>>,
-  TNameA extends string = string,
-> extends LogWriter<TFormattedData, TConfigA, TNameA> {
+> extends LogWriter<TFormattedData, TConfigA> {
   config: TConfigA
 
-  constructor(name: TNameA, config: TConfigA) {
+  constructor(name: string, config: TConfigA) {
     super(name)
 
     this.config = config

@@ -1,6 +1,7 @@
 export { LogWriter, ShutdownCb } from './logWriterClass'
 export { FileLogWriter, FileLogWriterConfig } from './logWriters/fileLogWriter'
 export { ConsoleLogWriter } from './logWriters/consoleLogWriter'
+export { MultiFileLogWriter, MultiFileLogWriterOptions } from './logWriters/multiFileLogWriter'
 export {
   SplunkHecLogWriter,
   SplunkHecLogWriterConfig,

@@ -1,5 +1,5 @@
 import flatted from 'flatted'
-import type { LevelParam, CallStack, LoggerArg } from './types'
+import type { LevelParam, CallStack, LoggerArg, RequiredBy, EmptyObject } from './types'
 import { getLevelRegistry } from './level'
 import type { Level } from 'level'
 
@@ -52,13 +52,13 @@ class Serializer {
 }
 const serializer = new Serializer()
 
-type LoggingEventProps<TData extends Array<LoggerArg>> = {
+type LoggingEventProps<TData extends Array<LoggerArg>, TContext extends Record<string, any>> = {
   loggerName: string
   level: LevelParam
   /** objects to log */
   data: TData
   error?: Error
-  context?: Record<string, any>
+  context?: TContext
   /** node process pid (`process.pid`) */
   pid: number
   location?: CallStack
@@ -70,14 +70,15 @@ type LoggingEventProps<TData extends Array<LoggerArg>> = {
   }
 }
 
-export class LoggingEvent<TData extends Array<LoggerArg>> {
-  payload: Omit<LoggingEventProps<TData>, 'level'> & {
+
+export class LoggingEvent<TData extends Array<LoggerArg>, TContext extends Record<string, any>> {
+  payload: Omit<RequiredBy<LoggingEventProps<TData, TContext>, 'context'>, 'level'> & {
     startTime: Date
     level: Level
   } = {} as any
 
-  constructor(param: Omit<LoggingEventProps<TData>, 'pid'>) {
-    const { loggerName, level, data, context, location, error, cluster } = param
+  constructor(param: Omit<LoggingEventProps<TData, TContext>, 'pid'>) {
+    const { loggerName, level, data, context = {} as TContext, location, error, cluster } = param
 
     let locationVal: CallStack | undefined = undefined
 
@@ -99,7 +100,7 @@ export class LoggingEvent<TData extends Array<LoggerArg>> {
       loggerName: loggerName,
       data: data,
       level: levelInstance,
-      context: { ...context },
+      context: { ...context }, // context might be empty if not passed in constructor
       pid: process.pid,
       /**
        * error object that is used to extract stack trace
@@ -142,7 +143,7 @@ export class LoggingEvent<TData extends Array<LoggerArg>> {
   }
 
   static deserialize(serialized: any) {
-    let event: LoggingEvent<any>
+    let event: LoggingEvent<any[], any>
     try {
       const rehydratedEvent = flatted.parse(serialized, (key, value) => {
         if (value && value.message && value.stack) {

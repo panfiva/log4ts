@@ -12,14 +12,18 @@ type WriteMethod<D> = ((data: D) => Promise<void>) | ((data: D) => void)
 
 export type ShutdownCb = ((e?: Error) => void) | ((e?: Error) => Promise<void>)
 
-type ShutdownFn = ((cb?: ShutdownCb) => Promise<void>) | ((cb?: ShutdownCb) => void)
+export type ShutdownFn = ((cb?: ShutdownCb) => Promise<void>) | ((cb?: ShutdownCb) => void)
 
 export type TransformerFn<
   TData extends Array<LoggerArg>,
   TFormattedData,
   TConfigA extends Record<string, any>,
-  TNameA extends string,
-> = (event: LoggingEvent<TData>, logWriterName: TNameA, logWriterConfig: TConfigA) => TFormattedData
+  TContext extends Record<string, any>,
+> = (
+  event: LoggingEvent<TData, TContext>,
+  logWriterName: string,
+  logWriterConfig: TConfigA
+) => TFormattedData
 
 /**
  * class that writes logs to the destination repository
@@ -29,9 +33,8 @@ export abstract class LogWriter<
   TFormattedData,
   // logWriter config parameters
   TConfigA extends Record<string, any>,
-  TNameA extends string,
 > {
-  name: TNameA
+  name: string
 
   /** contains references to all active writes */
   protected activeWrites = new Set<object>()
@@ -39,12 +42,17 @@ export abstract class LogWriter<
   /** logWriter configurations */
   abstract config: TConfigA
 
-  constructor(name: TNameA) {
+  /** indicate that shutdown event was triggered */
+  isShuttingDown: boolean = false
+
+  constructor(name: string) {
     this.name = name
   }
 
   /** use by EventBus to trigger shutdown */
   _shutdown: ShutdownFn = async (cb) => {
+    this.isShuttingDown = true
+
     debugShutdown(
       `[${this.name}]: shutdown event received; ${this.activeWrites.size} pending writes`
     )
@@ -67,7 +75,7 @@ export abstract class LogWriter<
     if (cb) cb()
   }
 
-  attachToLogger<TLogger extends Logger<any[], string>>(
+  attachToLogger<TLogger extends Logger<any[], any>>(
     logger: TLogger,
 
     /**
@@ -82,14 +90,15 @@ export abstract class LogWriter<
       TLogger extends Logger<infer TData, any> ? TData : never,
       TFormattedData,
       TConfigA,
-      TNameA
+      TLogger extends Logger<any, infer TContext> ? TContext : never
     >
   ): void {
-    type TData = TLogger extends Logger<infer U, any> ? U : never
+    // type TData = TLogger extends Logger<infer U, any> ? U : never
+    // type TContext = TLogger extends Logger<any, infer U> ? U : never
 
     const listener = function (
-      this: LogWriter<TFormattedData, TConfigA, TNameA>,
-      event: LoggingEvent<TData>
+      this: LogWriter<TFormattedData, TConfigA>,
+      event: LoggingEvent<any, any> // do not use TData and TContext since we are pushing generic listeners
     ) {
       const data = transformer(event, this.name, this.config)
 
@@ -117,14 +126,15 @@ export abstract class LogWriter<
    * execution is triggered by `EventBus.sendToListeners()` function call;
    * listeners are added by to `EventBus.listeners()` by `LogWriterClass.attachToLogger()`;
    */
-  private _write: WriteMethod<TFormattedData> = async (data: TFormattedData) => {
+  _write: WriteMethod<TFormattedData> = async (data: TFormattedData) => {
     const pointer = {}
     this.activeWrites.add(pointer)
 
     try {
       await this.write(data)
     } catch (err: any) {
-      debugLogWriter(`[${this.name}]: error writing request`, err)
+      // debugLogWriter(`[${this.name}]: error writing request`, err)
+      console.error(`[${this.name}]:`, `error writing request`, err)
     } finally {
       debugLogWriter(`[${this.name}]: write complete`)
       this.activeWrites.delete(pointer)
@@ -136,6 +146,8 @@ export abstract class LogWriter<
   /**
    * function that writes event data
    * At this point, data is transformed by the Transformer class
+   *
+   * Warning! Use _write when file writer needs to be used
    */
   abstract write: WriteMethod<TFormattedData>
 }

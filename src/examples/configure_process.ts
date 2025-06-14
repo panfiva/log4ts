@@ -9,7 +9,7 @@ export const configure_process = (/** duration in seconds before exit */ duratio
   type LoggerData = any[]
   type WriterData = any[]
 
-  const logger = new Logger<LoggerData>({
+  const logger = new Logger<LoggerData, never>({
     level: 'DEBUG',
     loggerName: 'node_process_logger',
     useCallStack: false,

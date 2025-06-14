@@ -1,4 +1,4 @@
-import { LogWriter, ShutdownCb } from '../logWriterClass'
+import { LogWriter } from '../logWriterClass'
 
 import debugLib from 'debug'
 const debug = debugLib('log4ts:logWriter:example')
@@ -8,11 +8,10 @@ export type ExampleLogWriterConfig = { example: string }
 export class ExampleLogWriter<
   TFormattedData,
   TConfigA extends Record<string, any>,
-  TNameA extends string = string,
-> extends LogWriter<TFormattedData, TConfigA, TNameA> {
+> extends LogWriter<TFormattedData, TConfigA> {
   config: TConfigA
 
-  constructor(name: TNameA, config: TConfigA) {
+  constructor(name: string, config: TConfigA) {
     super(name)
 
     this.config = config

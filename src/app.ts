@@ -1,115 +1,73 @@
 import { configure_process } from './examples/configure_process'
 
-import { Logger, SplunkHecLogWriter, SplunkData, LevelName } from './'
+import {
+  Logger,
+  MultiFileLogWriter,
+  MultiFileLogWriterOptions,
+  LevelName,
+  LoggerArg,
+  TransformerFn,
+} from './'
 
 // attach process event listeners and run 30 seconds
-configure_process(30)
-
-const baseURL: string | undefined = process.env.SPLUNK_COLLECTOR_URL
-const token: string | undefined = process.env.SPLUNK_HEC_TOKEN
-
-if (!baseURL) throw new Error('SPLUNK_COLLECTOR_URL env variable is empty')
-if (!token) throw new Error('defined SPLUNK_HEC_TOKEN  env variable is empty')
+configure_process(300)
 
 // send SIGINT
-setTimeout(() => {
-  process.kill(process.pid, 'SIGINT')
-}, 500)
+// setTimeout(() => {
+//   process.kill(process.pid, 'SIGINT')
+// }, 500)
 
-type Payload = {
-  origin: 'user' | 'service'
-  message: string
-  product: string
-  product_family: string
-  refid: string
-  details?: Record<string, any>
-} & (
-  | { type: 'log' }
-  | {
-      type: 'exec'
-      action: string
-      status: 'failed' | 'success'
-      user: string
-      requested_for?: string
-    }
-)
+type LoggerPayload = (string | number | boolean)[]
 
-type PayloadLogWriter = {
-  severity: LevelName
-  platform: 'v2'
-  loggerName: string
-  logWriterName: string
-}
-
-type SplunkLogWriterData = SplunkData<Payload & PayloadLogWriter>
-
-type SplunkLoggerData = Omit<SplunkData<Payload>, 'index' | 'time' | 'sourcetype' | 'event'> &
-  Payload
-
-type SplunkLoggerParams = [index: string, event: SplunkLoggerData]
-
-const logger = new Logger<SplunkLoggerParams>({
-  loggerName: 'SplunkLogger',
+const logger1 = new Logger<LoggerPayload, { filename: string }>({
+  loggerName: 'logger1',
   level: 'DEBUG',
+  context: { filename: 'test1.log' },
 })
+logger1.addContext('filename', 'test.log')
 
-const logWriter = new SplunkHecLogWriter<SplunkLogWriterData>('SplunkLogWriter', {
-  baseURL,
-  token,
+// const logger2 = new Logger<LoggerPayload, { filename: string }>({
+//   loggerName: 'logger2',
+//   level: 'DEBUG',
+//   context: { filename: 'test2.log' },
+// })
+// logger2.addContext('filename', 'test.log')
+
+const logWriter = new MultiFileLogWriter('writer', { baseDir: './logs', timeout: 500 })
+
+logWriter.attachToLogger(logger1, 'DEBUG', (event, _logWriterName, _logWriterConfig) => {
+  const param = event.payload.data
+
+  const filename: string = event.payload.context?.filename as string
+
+  return { filename: filename, data: param.join(',') }
 })
-
-logWriter.attachToLogger(logger, 'DEBUG', (event, logWriterName, _logWriterConfig) => {
-  const index = event.payload.data[0]
-  const data = event.payload.data[1]
-
-  const { host, source, ...restData } = data
-
-  const eventPayload: Payload & PayloadLogWriter = {
-    ...restData,
-    severity: event.payload.level.levelName,
-    loggerName: event.payload.loggerName,
-    logWriterName,
-    platform: 'v2',
-  }
-
-  const ret: SplunkLogWriterData = {
-    event: eventPayload,
-    host,
-    source,
-    sourcetype: 'json',
-    time: event.payload.startTime.getTime() / 1000,
-    index,
-  }
-
-  return ret
-})
-
-const data: SplunkLoggerData = {
-  type: 'exec',
-  host: 'host',
-  source: 'consumer-server:ezdemo-create.js',
-  origin: 'user',
-  message: 'ec2-workspace-create:success',
-  refid: 'refid-string',
-  status: 'success',
-  product: 'ezdemo:demo:360',
-  product_family: 'ezdemo',
-  action: 'create',
-  user: 'user@domain.com',
-  requested_for: 'user2@domain.com',
-  details: {
-    messageId: 'messageId-102',
-    executionId: 'executionId-103',
-    resourceId: 'resourceId-104',
-    target: 'ec2-workspace-1749',
-  },
-}
 
 let i = 0
 const intervalId = setInterval(() => {
   i++
-  logger.info('test', { ...data, message: `message ${i} ${new Date().toISOString()}` })
-  if (i === 50) {
+  logger1.info('test1', `message ${i} ${new Date().toISOString()}`)
+  logger1.info('test2', `message ${i} ${new Date().toISOString()}`)
+  logger1.info('test3', `message ${i} ${new Date().toISOString()}`)
+  logger1.info('test4', `message ${i} ${new Date().toISOString()}`)
+  logger1.info('test5', `message ${i} ${new Date().toISOString()}`)
+  logger1.info('test6', `message ${i} ${new Date().toISOString()}`)
+  logger1.info('test7', `message ${i} ${new Date().toISOString()}`)
+  logger1.info('test8', `message ${i} ${new Date().toISOString()}`)
+
+  if (i === 3) {
     clearInterval(intervalId)
   }
-}, 50)
+}, 1000)
+
+// let i = 0
+// const intervalId = setInterval(() => {
+//   i++
+//   if (i < 3 || i > 7) {
+//     logger1.info('test1', `message ${i} ${new Date().toISOString()}`)
+//     // logger2.info('test2', `message ${i} ${new Date().toISOString()}`)
+//   }
+//   if (i === 10) {
+//     clearInterval(intervalId)
+//   }
+// }, 1000)

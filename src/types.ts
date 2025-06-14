@@ -65,6 +65,8 @@ export type PartialBy<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>
 
 export type RequiredBy<T, K extends keyof T> = Omit<T, K> & Required<Pick<T, K>>
 
+export type EmptyObject = { [K in any]: never }
+
 export type TransformerFn<
   // Logger data shape
   D extends Array<LoggerArg> = Array<LoggerArg>,
@@ -84,9 +86,9 @@ export type TransformerFn<
   }
 ) => DA
 
-export type LoggerProps<TName extends string> = {
+export type LoggerConfig<TContext extends Record<string, any>> = {
   /** logger name */
-  loggerName: TName
+  loggerName: string
 
   /**
    * controls what messages will be sent to log writers using message severity
@@ -97,4 +99,6 @@ export type LoggerProps<TName extends string> = {
 
   /** indicates if callstack should be recorded  */
   useCallStack?: boolean
+
+  context?: TContext
 }

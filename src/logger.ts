@@ -2,7 +2,7 @@ import debugLib from 'debug'
 const debug = debugLib('log4ts:logger')
 
 import { LoggingEvent } from './loggingEvent'
-import type { LevelParam, LoggerProps } from './types'
+import type { LevelParam, LoggerConfig } from './types'
 import type { Level } from './level'
 import { getLevelRegistry } from './level'
 import { getEventBus } from './eventBus'
@@ -20,9 +20,9 @@ const defaultErrorCallStackSkip = 3
 /**
  * Logger to log messages.
  */
-export class Logger<TData extends any[], TName extends string = string> {
+export class Logger<TData extends any[], TContext extends Record<string, any>> {
   /** logger name */
-  loggerName: TName
+  loggerName: string
 
   /** default log level for attached log writers */
   private _level: Level
@@ -30,13 +30,13 @@ export class Logger<TData extends any[], TName extends string = string> {
   /** indicates if callstack should be recorded  */
   useCallStack: boolean
 
-  context: Record<string, any> = {}
+  context: TContext
   private callStackSkipIndex = 0
 
   private parseCallStack: ParseCallStackFunction = defaultParseCallStack
 
-  constructor(param: LoggerProps<TName>) {
-    this.context = {}
+  constructor(param: LoggerConfig<TContext>) {
+    this.context = param.context ?? ({} as TContext) // allow to update later
 
     const levelRegistry = getLevelRegistry()
 
@@ -143,7 +143,11 @@ export class Logger<TData extends any[], TName extends string = string> {
     getEventBus().then((eventBus) => eventBus.send(loggingEvent))
   }
 
-  addContext(key: string, value: any) {
+  addContext<K extends TContext extends undefined ? never : keyof TContext>(
+    key: K,
+    value: TContext[K]
+  ): void
+  addContext(key: keyof TContext, value: any) {
     this.context[key] = value
   }
 
@@ -152,7 +156,7 @@ export class Logger<TData extends any[], TName extends string = string> {
   }
 
   clearContext() {
-    this.context = {}
+    this.context = {} as TContext
   }
 
   setParseCallStackFunction(parseFunction?: ParseCallStackFunction) {

@@ -56,7 +56,7 @@ type SplunkLoggerData = Omit<SplunkData<Payload>, 'index' | 'time' | 'sourcetype
 
 type SplunkLoggerParams = [index: string, event: SplunkLoggerData]
 
-const logger = new Logger<SplunkLoggerParams>({
+const logger = new Logger<SplunkLoggerParams, never>({
   loggerName: 'SplunkLogger',
   level: 'DEBUG',
 })

@@ -11,17 +11,16 @@ let _cluster: Cluster | false | undefined = undefined
 let _eventBus: EventBus | undefined = undefined
 
 export type EventListenerConfig<
-  TLoggerName extends string,
   TData extends Array<LoggerArg>,
+  TContext extends Record<string, any>,
   TFormattedData,
   TConfigA extends Record<string, any>,
-  TNameA extends string,
 > = {
-  loggerName: TLoggerName
+  loggerName: string
   levelName: LevelName
-  listener: (event: LoggingEvent<any>) => void
-  logger: Logger<TData, TLoggerName>
-  logWriter: LogWriter<TFormattedData, TConfigA, TNameA>
+  listener: (event: LoggingEvent<TData, TContext>) => void
+  logger: Logger<TData, TContext>
+  logWriter: LogWriter<TFormattedData, TConfigA>
 }
 
 let _promise: Promise<EventBus> | undefined
@@ -67,9 +66,9 @@ export async function shutdown(callback?: ShutdownCb): Promise<void> {
 }
 
 class EventBus {
-  private listeners: EventListenerConfig<any, any, any, any, any>[] = []
+  private listeners: EventListenerConfig<any[], any, any, any>[] = []
 
-  private logWriters: Map<string, LogWriter<any, any, any>> = new Map()
+  private logWriters: Map<string, LogWriter<any, any>> = new Map()
 
   cluster: Cluster | false
 
@@ -106,7 +105,7 @@ class EventBus {
     return (this.cluster && this.cluster.isPrimary) || !this.cluster
   }
 
-  private sendToListeners = (logEvent: LoggingEvent<any>) => {
+  private sendToListeners = (logEvent: LoggingEvent<any[], any>) => {
     if (!this.enabled) return
 
     const listeners = this.listeners.filter(
@@ -131,7 +130,7 @@ class EventBus {
     // }
   }
 
-  public send(msg: LoggingEvent<any>) {
+  public send(msg: LoggingEvent<any[], any>) {
     if (this.isMaster()) {
       this.sendToListeners(msg)
     }
@@ -147,8 +146,8 @@ class EventBus {
 
   /** adds message listener */
   public addMessageListener(
-    conf: EventListenerConfig<any, any, any, any, any> & {
-      logWriter: LogWriter<any, any, any>
+    conf: EventListenerConfig<any[], any, any, any> & {
+      logWriter: LogWriter<any, any>
     }
   ) {
     const { logWriter, levelName, listener, loggerName, logger } = conf
