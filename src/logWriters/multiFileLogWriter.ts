@@ -130,18 +130,6 @@ export class MultiFileLogWriter extends LogWriter<Payload, MultiFileLogWriterOpt
     state?.writer._write(payload.data)
   }
 
-  // async write2(event: event: LoggingEvent<any[], any>) {
-
-  //   const category = event.categoryName || 'default'
-  //   let writer = this.writers.get(category)
-  //   if (!writer) {
-  //     const filePath = `${this.baseDir}/${this.fileNameFn(category)}`
-  //     writer = new FileLogWriter({ filePath })
-  //     this.writers.set(category, writer)
-  //   }
-  //   await writer.write(event)
-  // }
-
   // async close() {
   //   for (const writer of this.writers.values()) {
   //     await writer.close()

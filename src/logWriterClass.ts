@@ -124,7 +124,7 @@ export abstract class LogWriter<
    * - removes event from `this.activeWrites`
    *
    * execution is triggered by `EventBus.sendToListeners()` function call;
-   * listeners are added by to `EventBus.listeners()` by `LogWriterClass.attachToLogger()`;
+   * listeners are added to `EventBus.logWriterListeners` by `LogWriterClass.attachToLogger()`;
    */
   _write: WriteMethod<TFormattedData> = async (data: TFormattedData) => {
     const pointer = {}

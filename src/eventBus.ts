@@ -1,6 +1,8 @@
 import debugLib from 'debug'
 const debug = debugLib('log4ts:clustering')
 
+import EventEmitter from 'eventemitter3'
+
 import { Worker, Cluster } from 'cluster'
 import type { LoggingEvent } from './loggingEvent'
 import type { LevelName, LoggerArg } from './types'
@@ -65,8 +67,21 @@ export async function shutdown(callback?: ShutdownCb): Promise<void> {
   return eventBus.shutdown(callback)
 }
 
-class EventBus {
-  private listeners: EventListenerConfig<any[], any, any, any>[] = []
+/**
+ * This class is used to send events to registered log writers.
+ *
+ * Some log writers will emit `log4ts:pause` event
+ *
+ * @example
+ * getEventBus().then((v) =>
+ *  v.on('log4ts:pause', (evt) => {
+ *    console.log(evt)
+ *  })
+ * )
+ *
+ */
+class EventBus extends EventEmitter<'log4ts:pause'> {
+  private logWriterListeners: EventListenerConfig<any[], any, any, any>[] = []
 
   private logWriters: Map<string, LogWriter<any, any>> = new Map()
 
@@ -76,6 +91,8 @@ class EventBus {
   enabled: boolean = true
 
   constructor() {
+    super()
+
     // at this point, _cluster is populated with EventBus or false
     if (_cluster) {
       this.cluster = _cluster
@@ -108,7 +125,7 @@ class EventBus {
   private sendToListeners = (logEvent: LoggingEvent<any[], any>) => {
     if (!this.enabled) return
 
-    const listeners = this.listeners.filter(
+    const listeners = this.logWriterListeners.filter(
       (v) =>
         v.loggerName === logEvent.payload.loggerName &&
         logEvent.payload.level.isGreaterThanOrEqualTo(v.levelName)
@@ -151,7 +168,7 @@ class EventBus {
     }
   ) {
     const { logWriter, levelName, listener, loggerName, logger } = conf
-    this.listeners.push({ levelName, listener, loggerName, logger, logWriter })
+    this.logWriterListeners.push({ levelName, listener, loggerName, logger, logWriter })
     const registered = this.logWriters.get(conf.logWriter.name)
     if (registered && registered !== logWriter) {
       throw new Error('Duplicate logWriter name detected')

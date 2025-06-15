@@ -179,6 +179,7 @@ __metadata:
     date-format: "npm:^4.0.14"
     debug: "npm:^4.4.1"
     eslint: "npm:^9.29.0"
+    eventemitter3: "npm:^5.0.1"
     flatted: "npm:^3.3.3"
     fs-extra: "npm:^11.3.0"
     lodash: "npm:^4.17.21"
@@ -791,6 +792,13 @@ __metadata:
     stream-combiner: "npm:~0.0.4"
     through: "npm:~2.3.1"
   checksum: 10c0/c3ec4e1efc27ab3e73a98923f0a2fa9a19051b87068fea2f3d53d2e4e8c5cfdadf8c8a115b17f3d90b16a46432d396bad91b6e8d0cceb3e449be717a03b75209
+  languageName: node
+  linkType: hard
+
+"eventemitter3@npm:^5.0.1":
+  version: 5.0.1
+  resolution: "eventemitter3@npm:5.0.1"
+  checksum: 10c0/4ba5c00c506e6c786b4d6262cfbce90ddc14c10d4667e5c83ae993c9de88aa856033994dd2b35b83e8dc1170e224e66a319fa80adc4c32adcd2379bbc75da814
   languageName: node
   linkType: hard
 

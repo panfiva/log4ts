@@ -4,6 +4,8 @@ import { RollingFileWriteStream } from '../rollingFileStream/RollingFileWriteStr
 import * as path from 'path'
 import * as os from 'os'
 
+import { getEventBus } from '../eventBus'
+
 import debugLib from 'debug'
 const debug = debugLib('log4ts:logWriter:file')
 
@@ -99,7 +101,21 @@ export class FileLogWriter extends LogWriter<FileLogWriterData, FileLogWriterCon
     })
 
     stream.on('drain', () => {
-      // process.emit('log4ts:pause', false)
+      getEventBus().then((v) => {
+        v.emit('log4ts:pause', {
+          pause: false,
+          className: this.constructor.name,
+          logWriterName: this.name,
+        })
+      })
+    })
+
+    getEventBus().then((v) => {
+      v.emit('log4ts:pause', {
+        pause: false,
+        className: this.constructor.name,
+        logWriterName: this.name,
+      })
     })
 
     return stream
@@ -114,7 +130,16 @@ export class FileLogWriter extends LogWriter<FileLogWriterData, FileLogWriterCon
       data = data.replace(ansiRegex(), '')
     }
 
-    this.writer.write(data + eol, 'utf8')
+    if (!this.writer.write(data + eol, 'utf8')) {
+      //  writer returns `false` when stream needs to wait for the `'drain'` event to be emitted
+      getEventBus().then((v) => {
+        v.emit('log4ts:pause', {
+          pause: true,
+          className: this.constructor.name,
+          logWriterName: this.name,
+        })
+      })
+    }
   }
 
   reopen() {

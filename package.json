@@ -21,6 +21,7 @@
     "axios": "^1.10.0",
     "date-format": "^4.0.14",
     "debug": "^4.4.1",
+    "eventemitter3": "^5.0.1",
     "flatted": "^3.3.3",
     "fs-extra": "^11.3.0",
     "lodash": "^4.17.21",
