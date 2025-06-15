@@ -33,7 +33,7 @@ logger1.addContext('filename', 'test.log')
 // })
 // logger2.addContext('filename', 'test.log')
 
-const logWriter = new MultiFileLogWriter('writer', { baseDir: './logs', timeout: 500 })
+const logWriter = new MultiFileLogWriter('writer', { baseDir: './logs', timeout: 10000 })
 
 logWriter.attachToLogger(logger1, 'DEBUG', (event, _logWriterName, _logWriterConfig) => {
   const param = event.payload.data
@@ -47,15 +47,15 @@ let i = 0
 const intervalId = setInterval(() => {
   i++
   logger1.info('test1', `message ${i} ${new Date().toISOString()}`)
-  logger1.info('test2', `message ${i} ${new Date().toISOString()}`)
-  logger1.info('test3', `message ${i} ${new Date().toISOString()}`)
-  logger1.info('test4', `message ${i} ${new Date().toISOString()}`)
-  logger1.info('test5', `message ${i} ${new Date().toISOString()}`)
-  logger1.info('test6', `message ${i} ${new Date().toISOString()}`)
-  logger1.info('test7', `message ${i} ${new Date().toISOString()}`)
-  logger1.info('test8', `message ${i} ${new Date().toISOString()}`)
+  // logger1.info('test2', `message ${i} ${new Date().toISOString()}`)
+  // logger1.info('test3', `message ${i} ${new Date().toISOString()}`)
+  // logger1.info('test4', `message ${i} ${new Date().toISOString()}`)
+  // logger1.info('test5', `message ${i} ${new Date().toISOString()}`)
+  // logger1.info('test6', `message ${i} ${new Date().toISOString()}`)
+  // logger1.info('test7', `message ${i} ${new Date().toISOString()}`)
+  // logger1.info('test8', `message ${i} ${new Date().toISOString()}`)
 
-  if (i === 3) {
+  if (i === 1) {
     clearInterval(intervalId)
   }
 }, 1000)

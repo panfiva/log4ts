@@ -18,12 +18,26 @@ function mainSighupHandler() {
   })
 }
 
+// see https://github.com/chalk/ansi-regex/blob/main/index.js
+function ansiRegex({ onlyFirst = false } = {}) {
+  //
+  const ST = '(?:\\u0007|\\u001B\\u005C|\\u009C)'
+  const pattern = [
+    `[\\u001B\\u009B][[\\]()#;?]*(?:(?:(?:(?:;[-a-zA-Z\\d\\/#&.:=?%@~_]+)*|[a-zA-Z\\d]+(?:;[-a-zA-Z\\d\\/#&.:=?%@~_]*)*)?${ST})`,
+    '(?:(?:\\d{1,4}(?:;\\d{0,4})*)?[\\dA-PR-TZcf-nq-uy=><~]))',
+  ].join('|')
+
+  return new RegExp(pattern, onlyFirst ? undefined : 'g')
+}
+
 export type FileLogWriterConfig = {
   filename: string
   maxLogSize?: number
   backups?: number
   mode?: number
   encoding?: BufferEncoding
+  /** if true, color pattern (`\x1b[[0-9;]*`) is removed from incoming string */
+  removeColor?: boolean
 }
 
 /** data accepted by logWriter */
@@ -53,6 +67,7 @@ export class FileLogWriter extends LogWriter<FileLogWriterData, FileLogWriterCon
       mode: config.mode || 0o600,
       maxLogSize: config.maxLogSize ?? 1 * 1024 * 1024,
       encoding: config.encoding ?? 'utf-8',
+      removeColor: config.removeColor ?? true,
     }
 
     debug(`Creating file log writer '${name}' ${JSON.stringify(this.config)}`)
@@ -94,17 +109,10 @@ export class FileLogWriter extends LogWriter<FileLogWriterData, FileLogWriterCon
     if (!this.writer.writable) {
       return
     }
-    // if (this.config.removeColor === true) {
-    //
-    //   const regex = /\x1b[[0-9;]*m/g
-    //   loggingEvent.data = loggingEvent.data.map((d: any) => {
-    //     if (typeof d === 'string') return d.replace(regex, '')
-    //     return d
-    //   })
-    // }
-    // if (!this.writer.write(this.layout(loggingEvent, this.config.timezoneOffset) + eol, 'utf8')) {
-    //   process.emit('log4ts:pause', true)
-    // }
+    if (this.config.removeColor === true) {
+      // eslint-disable-next-line no-param-reassign
+      data = data.replace(ansiRegex(), '')
+    }
 
     this.writer.write(data + eol, 'utf8')
   }

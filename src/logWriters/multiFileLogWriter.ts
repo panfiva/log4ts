@@ -1,6 +1,5 @@
 import { LogWriter } from '../logWriterClass'
 import { FileLogWriter, FileLogWriterConfig } from './fileLogWriter'
-import { ConsoleLogWriter } from './consoleLogWriter'
 import path from 'path'
 import { Mutex } from 'async-mutex'
 
@@ -11,18 +10,15 @@ export type MultiFileLogWriterOptions = {
   baseDir: string
   /** timeout duration (ms) before file write is closed due to inactivity */
   timeout?: number
-}
-//& Omit<FileLogWriterConfig, 'filename'>
+} & Omit<FileLogWriterConfig, 'filename'>
 
 type Payload = { data: string; filename: string }
 
 export class MultiFileLogWriter extends LogWriter<Payload, MultiFileLogWriterOptions> {
-  // FileLogWriter<string>
-
   private state: Map<
     string,
     {
-      writer: ConsoleLogWriter<string[]>
+      writer: FileLogWriter
       timer: { timeout: number; lastUsed: number; interval: NodeJS.Timeout }
     }
   > = new Map()
@@ -70,9 +66,15 @@ export class MultiFileLogWriter extends LogWriter<Payload, MultiFileLogWriterOpt
     }
   }
 
-  write = async (data: Payload) => {
-    const filename = path.join(this.config.baseDir, data.filename)
-    const fileKey = `${this.name}-${filename}`
+  write = async (payload: Payload) => {
+    const { baseDir, timeout, ...restConfig } = this.config
+
+    /** combines `config.baseDir` and `payload.filename` */
+    const filename = path.join(baseDir, payload.filename)
+
+    /** combines `writer.name`, `config.baseDir` and `payload.filename` */
+    const fileKey = `${this.name}:${filename}`
+
     debug(`[${this.name}]: data received with file key '${filename}'`)
 
     let state = this.state.get(fileKey)
@@ -90,12 +92,10 @@ export class MultiFileLogWriter extends LogWriter<Payload, MultiFileLogWriterOpt
 
       debug(`[${this.name}]: '${filename}' creating new writer`)
 
-      const timeout = this.config.timeout
-
       if (timeout) {
         debug(`[${this.name}]: creating new timer`)
 
-        const writer = new ConsoleLogWriter(fileKey)
+        const writer = new FileLogWriter(fileKey, { filename: filename, ...restConfig })
 
         // Use mutex to prevent concurrency issues
         const release = await this.mutex.acquire()
@@ -127,9 +127,7 @@ export class MultiFileLogWriter extends LogWriter<Payload, MultiFileLogWriterOpt
       timer.lastUsed = Date.now()
     }
 
-    const d = data.data
-
-    state?.writer._write([d])
+    state?.writer._write(payload.data)
   }
 
   // async write2(event: event: LoggingEvent<any[], any>) {
