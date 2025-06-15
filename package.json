@@ -17,7 +17,8 @@
     "lint": "npx eslint 'src/**/*.ts*'"
   },
   "dependencies": {
-    "axios": "^1.9.0",
+    "async-mutex": "^0.5.0",
+    "axios": "^1.10.0",
     "date-format": "^4.0.14",
     "debug": "^4.4.1",
     "flatted": "^3.3.3",
@@ -26,12 +27,12 @@
     "zlib": "^1.0.5"
   },
   "devDependencies": {
-    "@eslint/js": "^9.28.0",
+    "@eslint/js": "^9.29.0",
     "@types/debug": "^4.1.12",
     "@types/fs-extra": "^11",
     "@types/lodash": "^4.17.17",
     "@types/node": "^24.0.1",
-    "eslint": "^9.28.0",
+    "eslint": "^9.29.0",
     "prettier": "^3.5.3",
     "tsc-watch": "^7.1.1",
     "typescript": "^5.8.3",

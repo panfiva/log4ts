@@ -2,6 +2,7 @@ import { LogWriter } from '../logWriterClass'
 import { FileLogWriter, FileLogWriterConfig } from './fileLogWriter'
 import { ConsoleLogWriter } from './consoleLogWriter'
 import path from 'path'
+import { Mutex } from 'async-mutex'
 
 import debugLib from 'debug'
 const debug = debugLib('log4ts:logWriter:multiFileLogWriter')
@@ -25,6 +26,8 @@ export class MultiFileLogWriter extends LogWriter<Payload, MultiFileLogWriterOpt
       timer: { timeout: number; lastUsed: number; interval: NodeJS.Timeout }
     }
   > = new Map()
+
+  private mutex = new Mutex()
 
   config: MultiFileLogWriterOptions
 
@@ -87,35 +90,36 @@ export class MultiFileLogWriter extends LogWriter<Payload, MultiFileLogWriterOpt
 
       debug(`[${this.name}]: '${filename}' creating new writer`)
 
-      if (this.config.timeout) {
+      const timeout = this.config.timeout
+
+      if (timeout) {
         debug(`[${this.name}]: creating new timer`)
 
         const writer = new ConsoleLogWriter(fileKey)
 
-        // fixMe: while better, this is still prone to concurrency issues
-        // suggested to use async-mutex library for initializing new files
-        // this will create performance impact; however this will only happen:
-        //    - on initiali writer initialization
-        //    - on writer initialization after writer was terminated
-        const reReadState = this.state.get(fileKey)
-        if (reReadState) {
-          state = reReadState
-          console.error(new Error(`[${this.name}]: Error: concurrency issue detected`))
-        } else {
-          state = {
-            writer,
-            timer: {
-              timeout: this.config.timeout,
-              lastUsed: Date.now(),
-              interval: setInterval(
-                this.checkForTimeout.bind(this, fileKey, filename),
-                this.config.timeout
-              ),
-            },
-          }
-        }
+        // Use mutex to prevent concurrency issues
+        const release = await this.mutex.acquire()
 
-        this.state.set(fileKey, state)
+        try {
+          const reReadState = this.state.get(fileKey)
+          if (reReadState) {
+            state = reReadState
+          } else {
+            state = {
+              writer,
+              timer: {
+                timeout,
+                lastUsed: Date.now(),
+                interval: setInterval(this.checkForTimeout.bind(this, fileKey, filename), timeout),
+              },
+            }
+            await new Promise((resolve) => setTimeout(resolve, 100)) // fixMe - remove before deploy
+            console.log('timer created !!!!!!!!!!!!!!!!!!!!!') // fixMe - remove before deploy
+          }
+          this.state.set(fileKey, state)
+        } finally {
+          release()
+        }
       }
     }
     // if writer exists and timeout is enabled, extend timeout
