@@ -113,8 +113,6 @@ export class MultiFileLogWriter extends LogWriter<Payload, MultiFileLogWriterOpt
                 interval: setInterval(this.checkForTimeout.bind(this, fileKey, filename), timeout),
               },
             }
-            await new Promise((resolve) => setTimeout(resolve, 100)) // fixMe - remove before deploy
-            console.log('timer created !!!!!!!!!!!!!!!!!!!!!') // fixMe - remove before deploy
           }
           this.state.set(fileKey, state)
         } finally {

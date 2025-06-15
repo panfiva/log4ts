@@ -72,13 +72,7 @@ export abstract class LogWriter<
 
   /** function executed on logWriter shutdown */
   shutdown: ShutdownFn = (cb) => {
-    new Promise((resolve) => setTimeout(resolve, 5000)).finally(() => {
-      debugShutdown(
-        `[${this.name}]: executing shutdown callback; ${this.activeWrites.size} pending writes`
-      )
-      if (cb) cb()
-    })
-    // if (cb) cb() // fixMe: remove delay above
+    if (cb) cb()
   }
 
   attachToLogger<TLogger extends Logger<any[], any>>(
