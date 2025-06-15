@@ -70,8 +70,10 @@ type LoggingEventProps<TData extends Array<LoggerArg>, TContext extends Record<s
   }
 }
 
-
-export class LoggingEvent<TData extends Array<LoggerArg>, TContext extends Record<string, any>> {
+export class LoggingEvent<
+  TData extends Array<LoggerArg>,
+  TContext extends Record<string, any> = never,
+> {
   payload: Omit<RequiredBy<LoggingEventProps<TData, TContext>, 'context'>, 'level'> & {
     startTime: Date
     level: Level
