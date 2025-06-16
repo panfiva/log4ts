@@ -6,7 +6,7 @@ import EventEmitter from 'eventemitter3'
 import type { Worker, Cluster } from 'cluster'
 import type { LoggingEvent } from './loggingEvent'
 import type { LevelName, LoggerArg } from './types'
-import type { LogWriter, ShutdownCb } from './logWriterClass'
+import type { LogWriter, ShutdownCb } from './logWriter'
 import type { Logger } from './logger'
 
 let _cluster: Cluster | false | undefined = undefined

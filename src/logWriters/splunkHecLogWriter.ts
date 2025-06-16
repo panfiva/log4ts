@@ -1,4 +1,4 @@
-import { LogWriter } from '../logWriterClass'
+import { LogWriter } from '../logWriter'
 
 import axios from 'axios'
 import https from 'https'

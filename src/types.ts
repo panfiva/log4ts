@@ -1,6 +1,6 @@
 import type { Level } from './level'
 import type { Logger } from './logger'
-import type { LogWriter } from './logWriterClass'
+import type { LogWriter } from './logWriter'
 import type { LoggingEvent } from './loggingEvent'
 
 /** Standard level name */

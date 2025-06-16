@@ -1,4 +1,4 @@
-import { LogWriter, ShutdownCb } from '../logWriterClass'
+import { LogWriter, ShutdownCb } from '../logWriter'
 import { FileLogWriter, FileLogWriterConfig } from './fileLogWriter'
 import path from 'path'
 import { Mutex } from 'async-mutex'

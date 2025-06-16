@@ -1,4 +1,4 @@
-import { LogWriter, ShutdownCb } from '../logWriterClass'
+import { LogWriter, ShutdownCb } from '../logWriter'
 
 import { RollingFileWriteStream } from '../rollingFileStream/RollingFileWriteStream'
 import * as path from 'path'

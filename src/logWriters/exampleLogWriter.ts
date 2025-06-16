@@ -1,4 +1,4 @@
-import { LogWriter } from '../logWriterClass'
+import { LogWriter } from '../logWriter'
 
 import debugLib from 'debug'
 const debug = debugLib('log4ts:logWriter:example')
