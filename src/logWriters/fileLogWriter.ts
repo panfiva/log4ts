@@ -153,7 +153,7 @@ export class FileLogWriter extends LogWriter<FileLogWriterData, FileLogWriterCon
     this.reopen()
   }
 
-  shutdown = (cb?: ShutdownCb) => {
+  protected _shutdown = (cb?: ShutdownCb) => {
     sighupListeners.delete(this)
     if (sighupListeners.size === 0 && mainSighupListenerStarted) {
       process.removeListener('SIGHUP', mainSighupHandler)

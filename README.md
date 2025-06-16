@@ -29,7 +29,9 @@ yarn add @panfiva/log4ts
 
 - **Graceful shutdown**
 
-  Proper cleanup with `shutdown()` function
+  Proper cleanup with `log4ts.shutdown(cb)` function. Once executed, all loggers will stop
+  sending events to all registered log writers, and all log writers will receive shutdown
+  request via `LogWriter.shutdownWriter(cb)` function call.
 
 - **Built-in log writers**
 
@@ -58,23 +60,65 @@ All examples are configured with process signal listeners to demonstrate event h
   - Constrain log function args to specific data shape
   - Transform log function args to data shape supported by Splunk HEC logger
 
+## Shutdown
+
+Logging environment should execute `log4ts.shutdown(cb)` function before process exit.
+
+Additionally, individual log writers could be shutdown manually by executing
+`LogWriter.shutdownWriter(cb)`; this should be done to avoid memory leaks when
+dynamically creating and registering log writers in custom code.
+
+### Data loss during shutdown
+
+`Logger.log(data)` will NOT send data:
+
+- To all log writers after `log4ts.shutdown(cb)` is executed
+- To the log writer that was terminated by `<logWriter>.shutdownWriter(cb)` command
+
+However, backend calls to `LogWriter.write(data)` will still be forwarded to log writers!
+
+**Warning!**
+
+To avoid data loss and unhandled exceptions, inspect `LogWriter.isShuttingDown`
+to determine if shutdown event was triggered before executing `LogWriter.write(data)`
+
 ## Custom log writers
 
 Custom log writers can be created by extending `LogWriter` class:
 
-- Define `config` property with proper config data type.
-- Define `shutdown = (cb?: ShutdownCb) => {...}` function
-  - This function must execute `cb()` after shutdown routines complete
+- Extend `LogWriter` class with appropriate data types
+
+  `FormattedData` - data that will be received by `LogWriter.write(data)` method
+
+  `Config` - configuration parameters for log writer
+
+  ```ts
+  class CustomWriter extends LogWriter<FormattedData, Config> {}
+  ```
+
+- Override protected `_shutdown` function, if needed
+
+  The shutdown function must execute `cb` before exit.
+
+  ```ts
+  // default function
+  protected _shutdown: ShutdownFn = (cb) => {
+    if (cb) cb()
+  }
+  ```
+
+  This function is executed when `LogWriter.shutdownWriter(cb)` is execute to terminate
+  the environment.
+
+  Note that users may also call `LogWriter.shutdownWriter(cb)` manually; however this will
+  **NOT** stop new events to be send the log writer, resulting in exceptions or data loss.
+
+  To avoid issues, implement validation `LogWriter.isShuttingDown !== true` before calling
+  `this.write` method.
+
+  - See usage example in multi file log writer
+
 - Define `write = (data: LogWriterData): void = {...}` method
-
-Call to `log4st.shutdown()` will trigger `LogWriter.shutdown(cb)` call for all
-registered log writers.
-
-Log writer is registered when `LogWriter.attachToLogger()` function is executed.
-
-Pending writes might be lost unless proper handling logic is
-added to log writer `write` and `shutdown` methods to track pending writes
-and wait for completion before proceeding with `shutdown` call
 
 ## Contributing
 

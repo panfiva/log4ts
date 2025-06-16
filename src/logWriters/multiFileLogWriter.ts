@@ -45,7 +45,7 @@ export class MultiFileLogWriter extends LogWriter<Payload, MultiFileLogWriterOpt
         )
         clearInterval(state.timer.interval)
 
-        state.writer._shutdown((err) => {
+        state.writer.shutdownWriter((err) => {
           if (err) {
             debug(`[${this.name}]: '${filename}' ignore error on file shutdown: %s`, err.message)
           }
@@ -135,13 +135,13 @@ export class MultiFileLogWriter extends LogWriter<Payload, MultiFileLogWriterOpt
     }
   }
 
-  shutdown = (cb?: ShutdownCb) => {
+  protected _shutdown = (cb?: ShutdownCb) => {
     const fileKeys = this.state.keys()
     fileKeys.forEach((fileKey) => {
       const v = this.state.get(fileKey)
       if (v?.timer) clearInterval(v.timer.interval)
       if (v?.writer)
-        v.writer._shutdown((err) => {
+        v.writer.shutdownWriter((err) => {
           if (err) {
             debug(`[${this.name}]: '${fileKey}' ignore error on file shutdown: %s`, err.message)
           }

@@ -49,8 +49,11 @@ export abstract class LogWriter<
     this.name = name
   }
 
-  /** use by EventBus to trigger shutdown */
-  _shutdown: ShutdownFn = async (cb) => {
+  /**
+   * Used by EventBus to trigger shutdown for appenders. During the shutdown,
+   * pending events will be granted 5 seconds to complete before executing `this._shutdown`
+   */
+  shutdownWriter: ShutdownFn = async (cb) => {
     this.isShuttingDown = true
 
     debugShutdown(
@@ -67,11 +70,11 @@ export abstract class LogWriter<
 
     debugShutdown(`[${this.name}]: initiating shutdown; ${this.activeWrites.size} pending writes`)
 
-    return this.shutdown(cb)
+    return this._shutdown(cb)
   }
 
   /** function executed on logWriter shutdown */
-  shutdown: ShutdownFn = (cb) => {
+  protected _shutdown: ShutdownFn = (cb) => {
     if (cb) cb()
   }
 

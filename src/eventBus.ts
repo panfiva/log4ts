@@ -216,6 +216,6 @@ class EventBus extends EventEmitter<'log4ts:pause'> {
       }
     }
 
-    logWritersToCheck.forEach((v) => v._shutdown(complete))
+    logWritersToCheck.forEach((v) => v.shutdownWriter(complete))
   }
 }
