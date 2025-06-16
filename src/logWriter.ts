@@ -78,7 +78,7 @@ export abstract class LogWriter<
     if (cb) cb()
   }
 
-  attachToLogger<TLogger extends Logger<any, any>>(
+  async attachToLogger<TLogger extends Logger<any, any>>(
     logger: TLogger,
 
     /**
@@ -95,7 +95,7 @@ export abstract class LogWriter<
       TConfigA,
       TLogger extends Logger<any, infer TContext> ? TContext : never
     >
-  ): void {
+  ): Promise<void> {
     // type TData = TLogger extends Logger<infer U, any> ? U : never
     // type TContext = TLogger extends Logger<any, infer U> ? U : never
 
@@ -108,13 +108,13 @@ export abstract class LogWriter<
       this.write(data)
     }.bind(this)
 
-    getEventBus().then((eventBus) => {
-      eventBus.addMessageListener({
-        levelName,
-        listener,
-        logWriter: this,
-        logger,
-      })
+    const eventBus = await getEventBus()
+
+    await eventBus.addMessageListener({
+      levelName,
+      listener,
+      logWriter: this,
+      logger,
     })
   }
 

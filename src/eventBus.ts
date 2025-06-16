@@ -3,6 +3,8 @@ const debug = debugLib('log4ts:clustering')
 
 import EventEmitter from 'eventemitter3'
 
+import { Mutex } from 'async-mutex'
+
 import type { Worker, Cluster } from 'cluster'
 import type { LoggingEvent } from './loggingEvent'
 import type { LevelName, LoggerArg } from './types'
@@ -91,6 +93,8 @@ class EventBus extends EventEmitter<'log4ts:pause'> {
   /**  indicates if message sending is disabled */
   enabled: boolean = true
 
+  private mutex = new Mutex()
+
   constructor() {
     super()
 
@@ -111,6 +115,72 @@ class EventBus extends EventEmitter<'log4ts:pause'> {
       }
     } else {
       this.cluster = false
+    }
+  }
+
+  async unregisterLogger<TData extends any[], TContext extends Record<string, any>>(
+    logger: Logger<TData, TContext>
+  ) {
+    const release = await this.mutex.acquire()
+
+    try {
+      this._logWriterListeners = this._logWriterListeners.filter(
+        (v) => v.logger.loggerName !== logger.loggerName
+      )
+      this._loggers.delete(logger.loggerName)
+      this._cleanupOrphanedLogWriters()
+    } finally {
+      release()
+    }
+  }
+
+  async unregisterLogWriter<TFormattedData, TConfigA extends Record<string, any>>(
+    logWriter: LogWriter<TFormattedData, TConfigA>
+  ) {
+    const release = await this.mutex.acquire()
+
+    try {
+      this._logWriterListeners = this._logWriterListeners.filter(
+        (v) => v.logWriter.name !== logWriter.name
+      )
+      this._logWriters.delete(logWriter.name)
+      this._cleanupOrphanedLoggers()
+    } finally {
+      release()
+    }
+  }
+
+  /**
+   * Remove log writers from _logWriters that no longer have references in _logWriterListeners
+   */
+  private _cleanupOrphanedLogWriters() {
+    // Get all log writer names that are still referenced in listeners
+    const referencedLogWriterNames = new Set(
+      this._logWriterListeners.map((listener) => listener.logWriter.name)
+    )
+
+    // Remove log writers that are no longer referenced
+    for (const [logWriterName] of this._logWriters.entries()) {
+      if (!referencedLogWriterNames.has(logWriterName)) {
+        this._logWriters.delete(logWriterName)
+      }
+    }
+  }
+
+  /**
+   * Remove loggers from _loggers that no longer have references in _logWriterListeners
+   */
+  private _cleanupOrphanedLoggers() {
+    // Get all logger names that are still referenced in listeners
+    const referencedLoggerNames = new Set(
+      this._logWriterListeners.map((listener) => listener.logger.loggerName)
+    )
+
+    // Remove loggers that are no longer referenced
+    for (const [loggerName] of this._loggers.entries()) {
+      if (!referencedLoggerNames.has(loggerName)) {
+        this._loggers.delete(loggerName)
+      }
     }
   }
 
@@ -163,7 +233,7 @@ class EventBus extends EventEmitter<'log4ts:pause'> {
   }
 
   /** adds message listener */
-  public addMessageListener(
+  async addMessageListener(
     conf: EventListenerConfig<any, any, any, any> & {
       logWriter: LogWriter<any, any>
     }
@@ -172,19 +242,25 @@ class EventBus extends EventEmitter<'log4ts:pause'> {
 
     const registeredWriter = this._logWriters.get(logWriter.name)
     if (registeredWriter && registeredWriter !== logWriter) {
-      throw new Error('Duplicate logWriter name detected')
+      throw new Error(`Duplicate logWriter name '${logWriter.name}' detected`)
     }
 
     const registeredLogger = this._loggers.get(logger.loggerName)
     if (registeredLogger && registeredLogger !== logger) {
-      throw new Error('Duplicate logger name detected')
+      throw new Error(`Duplicate logger name '${logger.loggerName}' detected`)
     }
 
-    this._logWriterListeners.push({ levelName, listener, logger, logWriter })
+    const release = await this.mutex.acquire()
 
-    this._logWriters.set(logWriter.name, logWriter)
+    try {
+      this._logWriterListeners.push({ levelName, listener, logger, logWriter })
 
-    this._loggers.set(logger.loggerName, logger)
+      this._logWriters.set(logWriter.name, logWriter)
+
+      this._loggers.set(logger.loggerName, logger)
+    } finally {
+      release()
+    }
   }
 
   public async shutdown(callback?: ShutdownCb) {
