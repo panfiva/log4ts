@@ -33,7 +33,9 @@
     "rebuild": "yarn run clean; tsc --build",
     "clean": "rm -rf ./dist; rm -rf ./tsconfig.tsbuildinfo",
     "test-circular-deps": "yarn run rebuild && npx madge --circular --ts-config ./tsconfig.json ./",
-    "lint": "npx eslint 'src/**/*.ts*'"
+    "lint": "npx eslint 'src/**/*.ts*'",
+    "npm-dry-run": "yarn run clean && yarn run build && yarn run lint && npm pack --dry-run",
+    "npm-publish": "yarn run clean && yarn run build && yarn run lint && npm publish --access public"
   },
   "madge": {
     "detectiveOptions": {
