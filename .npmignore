@@ -1,0 +1,32 @@
+# Source files
+src/
+tsconfig.json
+tsconfig.tsbuildinfo
+eslint.config.cjs
+.prettierrc.mjs
+
+# Development files
+.env
+.env.*
+
+# Logs
+logs/
+
+# Development dependencies
+node_modules/
+
+# IDE files
+.vscode/
+
+# Test files
+test/
+tests/
+__tests__/
+*.test.*
+*.spec.*
+
+# Build artifacts not needed in package
+*.tsbuildinfo
+.yarn/
+.yarnrc.yml
+yarn.lock

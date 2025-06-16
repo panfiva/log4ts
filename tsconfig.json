@@ -1,0 +1,25 @@
+{
+  "include": ["src"],
+  "compileOnSave": false,
+  "compilerOptions": {
+    "strict": true,
+    "noUnusedParameters": false,
+    "noUnusedLocals": false,
+    "noEmit": false,
+    "target": "esnext",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "rootDir": "src",
+    "outDir": "./dist",
+    "baseUrl": "./src",
+    "declaration": true,
+    "esModuleInterop": true,
+    "allowJs": true,
+    "skipLibCheck": false,
+    "incremental": true,
+    "allowSyntheticDefaultImports": true,
+    "sourceMap": true,
+    "removeComments": true
+  },
+  "exclude": ["node_modules", "dist"]
+}

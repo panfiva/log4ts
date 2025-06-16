@@ -1,0 +1,15 @@
+**/node_modules/
+
+**/.pnp.* 
+**/.yarn/*
+!**/.yarn/patches
+!**/.yarn/plugins
+!**/.yarn/releases
+!**/.yarn/versions
+
+**/tsconfig.tsbuildinfo
+
+
+**/.env
+**/dist
+/logs/**

@@ -1,0 +1,73 @@
+{
+  "name": "@panfiva/log4ts",
+  "packageManager": "yarn@4.9.2",
+  "version": "0.0.1",
+  "description": "Port of log4js-node to TypeScript",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "license": "MIT",
+  "author": "Vadim Panfilov <vadim.panfilov@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/panfiva/log4ts.git"
+  },
+  "homepage": "https://github.com/panfiva/log4ts#readme",
+  "bugs": {
+    "url": "https://github.com/panfiva/log4ts/issues"
+  },
+  "keywords": [
+    "logging",
+    "node",
+    "typescript",
+    "log4ts"
+  ],
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "prettier": "prettier --config ./.prettierrc.mjs --write --list-different \"src/**/*.{js,jsx,json,ts,tsx,css,md,jsonc,mjs,cjs}\"",
+    "start": "yarn build && bash -c 'set -e; [ -f .env ] && set -o allexport && source .env && set +o allexport; tsc-watch --onSuccess \"node ./dist/index.js\"'",
+    "build": "tsc --build",
+    "update": "npx npm-check-updates  --deep --upgrade",
+    "upgrade": "yarn set version stable && rm -f yarn.lock && yarn install",
+    "rebuild": "yarn run clean; tsc --build",
+    "clean": "rm -rf ./dist; rm -rf ./tsconfig.tsbuildinfo",
+    "test-circular-deps": "yarn run rebuild && npx madge --circular --ts-config ./tsconfig.json ./",
+    "lint": "npx eslint 'src/**/*.ts*'"
+  },
+  "madge": {
+    "detectiveOptions": {
+      "ts": {
+        "skipTypeImports": true,
+        "skipAsyncImports": false
+      },
+      "tsx": {
+        "skipTypeImports": true,
+        "skipAsyncImports": false
+      }
+    }
+  },
+  "dependencies": {
+    "async-mutex": "^0.5.0",
+    "axios": "^1.10.0",
+    "date-format": "^4.0.14",
+    "debug": "^4.4.1",
+    "eventemitter3": "^5.0.1",
+    "flatted": "^3.3.3",
+    "fs-extra": "^11.3.0",
+    "lodash": "^4.17.21",
+    "zlib": "^1.0.5"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.29.0",
+    "@types/debug": "^4.1.12",
+    "@types/fs-extra": "^11",
+    "@types/lodash": "^4.17.17",
+    "@types/node": "^24.0.1",
+    "eslint": "^9.29.0",
+    "prettier": "^3.5.3",
+    "tsc-watch": "^7.1.1",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.34.0"
+  }
+}
