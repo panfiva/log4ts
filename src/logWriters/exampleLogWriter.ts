@@ -19,7 +19,7 @@ export class ExampleLogWriter<
     debug(`Creating example log writer '${name}' ${JSON.stringify(this.config)}`)
   }
 
-  write = (data: TFormattedData) => {
+  protected _write = (data: TFormattedData) => {
     console.log(data)
   }
 }

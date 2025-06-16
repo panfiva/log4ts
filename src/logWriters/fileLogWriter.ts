@@ -121,7 +121,7 @@ export class FileLogWriter extends LogWriter<FileLogWriterData, FileLogWriterCon
     return stream
   }
 
-  write = (data: FileLogWriterData): void => {
+  protected _write = (data: FileLogWriterData): void => {
     if (!this.writer.writable) {
       return
     }

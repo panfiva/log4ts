@@ -105,7 +105,7 @@ export abstract class LogWriter<
     ) {
       const data = transformer(event, this.name, this.config)
 
-      this._write(data)
+      this.write(data)
     }.bind(this)
 
     getEventBus().then((eventBus) => {
@@ -128,12 +128,12 @@ export abstract class LogWriter<
    * execution is triggered by `EventBus.sendToListeners()` function call;
    * listeners are added to `EventBus.logWriterListeners` by `LogWriterClass.attachToLogger()`;
    */
-  _write: WriteMethod<TFormattedData> = async (data: TFormattedData) => {
+  write: WriteMethod<TFormattedData> = async (data: TFormattedData) => {
     const pointer = {}
     this.activeWrites.add(pointer)
 
     try {
-      await this.write(data)
+      await this._write(data)
     } catch (err: any) {
       // debugLogWriter(`[${this.name}]: error writing request`, err)
       console.error(`[${this.name}]:`, `error writing request`, err)
@@ -150,5 +150,5 @@ export abstract class LogWriter<
    *
    * Warning! Use _write when file writer needs to be used
    */
-  abstract write: WriteMethod<TFormattedData>
+  protected abstract _write: WriteMethod<TFormattedData>
 }

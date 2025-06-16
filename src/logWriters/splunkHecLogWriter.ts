@@ -45,7 +45,7 @@ export class SplunkHecLogWriter<
     debug(`[${this.name}]: initializing log writer for ${this.config.baseURL}`)
   }
 
-  write = async (data: TFormattedData) => {
+  protected _write = async (data: TFormattedData) => {
     const payload = { ...data }
     if (!payload.source.startsWith('http:')) payload.source = `http:${payload.source}`
 

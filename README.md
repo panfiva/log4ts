@@ -75,12 +75,12 @@ dynamically creating and registering log writers in custom code.
 - To all log writers after `log4ts.shutdown(cb)` is executed
 - To the log writer that was terminated by `<logWriter>.shutdownWriter(cb)` command
 
-However, backend calls to `LogWriter.write(data)` will still be forwarded to log writers!
+However, direct calls to `LogWriter.write(data)` WILL be forwarded to log writers!
 
 **Warning!**
 
-To avoid data loss and unhandled exceptions, inspect `LogWriter.isShuttingDown`
-to determine if shutdown event was triggered before executing `LogWriter.write(data)`
+To avoid data loss and unhandled exceptions, inspect `LogWriter.isShuttingDown`.
+to determine if shutdown event was triggered before calling `LogWriter.write(data)`.
 
 ## Custom log writers
 
@@ -107,18 +107,16 @@ Custom log writers can be created by extending `LogWriter` class:
   }
   ```
 
-  This function is executed when `LogWriter.shutdownWriter(cb)` is execute to terminate
-  the environment.
+- Define protected `_write` function
 
-  Note that users may also call `LogWriter.shutdownWriter(cb)` manually; however this will
-  **NOT** stop new events to be send the log writer, resulting in exceptions or data loss.
+  ```ts
+  // default function definition
+  type WriteMethod<D> = ((data: D) => Promise<void>) | ((data: D) => void)
+  protected abstract _write: WriteMethod<TFormattedData>
+  ```
 
-  To avoid issues, implement validation `LogWriter.isShuttingDown !== true` before calling
-  `this.write` method.
-
-  - See usage example in multi file log writer
-
-- Define `write = (data: LogWriterData): void = {...}` method
+  The `_write` function will be called when `LogWriter.write(data)`
+  is called directly, or via `Logger.log(data)` calls
 
 ## Contributing
 

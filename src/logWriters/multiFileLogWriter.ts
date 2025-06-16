@@ -67,7 +67,7 @@ export class MultiFileLogWriter extends LogWriter<Payload, MultiFileLogWriterOpt
     }
   }
 
-  write = async (payload: Payload) => {
+  protected _write = async (payload: Payload) => {
     const { baseDir, timeout, ...restConfig } = this.config
 
     /** combines `config.baseDir` and `payload.filename` */
@@ -119,7 +119,7 @@ export class MultiFileLogWriter extends LogWriter<Payload, MultiFileLogWriterOpt
           }
         }
         this.state.set(fileKey, state)
-        state.writer._write(payload.data)
+        state.writer.write(payload.data)
       } finally {
         release()
       }
@@ -129,9 +129,9 @@ export class MultiFileLogWriter extends LogWriter<Payload, MultiFileLogWriterOpt
       debug(`[${this.name}]: '${fileKey}' extending activity`)
       const { timer } = this.state.get(fileKey)!
       if (timer) timer.lastUsed = Date.now()
-      state.writer._write(payload.data)
+      state.writer.write(payload.data)
     } else {
-      state.writer._write(payload.data)
+      state.writer.write(payload.data)
     }
   }
 

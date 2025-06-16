@@ -19,7 +19,7 @@ export class ConsoleLogWriter<TFormattedData extends any[]> extends LogWriter<
     debug(`[${name}]: Creating console log writer'`)
   }
 
-  write = (data: TFormattedData) => {
+  protected _write = (data: TFormattedData) => {
     debug(`[${this.name}]: writing log'`)
     console.log(...data)
   }
