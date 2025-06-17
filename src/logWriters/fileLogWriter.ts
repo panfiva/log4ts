@@ -101,21 +101,19 @@ export class FileLogWriter extends LogWriter<FileLogWriterData, FileLogWriterCon
     })
 
     stream.on('drain', () => {
-      getEventBus().then((v) => {
-        v.emit('log4ts:pause', {
-          pause: false,
-          className: this.constructor.name,
-          logWriterName: this.name,
-        })
-      })
-    })
-
-    getEventBus().then((v) => {
-      v.emit('log4ts:pause', {
+      const eventBus = getEventBus()
+      eventBus.emit('log4ts:pause', {
         pause: false,
         className: this.constructor.name,
         logWriterName: this.name,
       })
+    })
+
+    const eventBus = getEventBus()
+    eventBus.emit('log4ts:pause', {
+      pause: false,
+      className: this.constructor.name,
+      logWriterName: this.name,
     })
 
     return stream
@@ -132,12 +130,11 @@ export class FileLogWriter extends LogWriter<FileLogWriterData, FileLogWriterCon
 
     if (!this.writer.write(data + eol, 'utf8')) {
       //  writer returns `false` when stream needs to wait for the `'drain'` event to be emitted
-      getEventBus().then((v) => {
-        v.emit('log4ts:pause', {
-          pause: true,
-          className: this.constructor.name,
-          logWriterName: this.name,
-        })
+      const eventBus = getEventBus()
+      eventBus.emit('log4ts:pause', {
+        pause: true,
+        className: this.constructor.name,
+        logWriterName: this.name,
       })
     }
   }
