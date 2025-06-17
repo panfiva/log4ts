@@ -140,7 +140,8 @@ export class Logger<TData extends any[], TContext extends Record<string, any> = 
       location: callStack,
       error,
     })
-    getEventBus().then((eventBus) => eventBus.send(loggingEvent))
+    const eventBus = getEventBus()
+    eventBus.send(loggingEvent)
   }
 
   addContext<K extends TContext extends undefined ? never : keyof TContext>(
@@ -157,12 +158,6 @@ export class Logger<TData extends any[], TContext extends Record<string, any> = 
 
   clearContext() {
     this.context = {} as TContext
-  }
-
-  /** unregister the logger and its writers */
-  async unregister() {
-    const eventBus = await getEventBus()
-    await eventBus.unregisterLogger(this)
   }
 
   setParseCallStackFunction(parseFunction?: ParseCallStackFunction) {

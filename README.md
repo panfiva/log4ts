@@ -118,41 +118,6 @@ Custom log writers can be created by extending `LogWriter` class:
   The `_write` function will be called when `LogWriter.write(data)`
   is called directly, or via `Logger.log(data)` calls
 
-## Unregistering log writers
-
-Registered log writers are stored in EventBus private properties.
-
-When loggers or log writers are not needed, registrations can be removed by running
-on of the following commands:
-
-- `logger.unregister()` - unregister the logger and its association to writers
-- `logWriter.unregister()` - unregister writer and its association to loggers
-
-This will allow JavaScript to garbage collect corresponding loggers and log writers
-when they are no longer used, freeing memory.
-
-Generally speaking, unregistering is not required when loggers should exist through
-the entire lifetime application execution. There are situations, however, when loggers
-and created dynamically and should only exist for a brief period of time.
-
-For example, a REST API service can register a new logger for each REST call and then
-terminate the logger once the request is fulfilled. In this model, one log writer will
-exist while the service is running, and new loggers will be created for each REST API
-request:
-
-```ts
-
-const writer = new LogWriter({ loggerName: 'writer'})
-
-function request_handler(request, response, next) {
-  const logger = new Logger( {loggerName: 'L2', level: 'DEBUG', context:{user:props.auth.user}} )
-  writer.attachToLogger(logger, 'DEBUG', transformFn),
-  ...
-  logger.unregister()
-  return response.send()
-}
-```
-
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a pull request

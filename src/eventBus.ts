@@ -3,8 +3,6 @@ const debug = debugLib('log4ts:clustering')
 
 import EventEmitter from 'eventemitter3'
 
-import { Mutex } from 'async-mutex'
-
 import type { Worker, Cluster } from 'cluster'
 import type { LoggingEvent } from './loggingEvent'
 import type { LevelName, LoggerArg } from './types'
@@ -26,44 +24,29 @@ export type EventListenerConfig<
   logWriter: LogWriter<TFormattedData, TConfigA>
 }
 
-let _promise: Promise<EventBus> | undefined
+export function getEventBus(): EventBus {
+  if (_eventBus) return _eventBus
 
-export async function getEventBus(): Promise<EventBus> {
-  if (_promise) {
-    return _promise
+  if (_cluster === false) {
+    _eventBus = new EventBus()
+    return _eventBus
   }
 
-  const fn = async (): Promise<EventBus> => {
-    if (_eventBus) return _eventBus
-
-    if (_cluster) {
-      _eventBus = new EventBus()
-      return _eventBus
-    }
-
-    // at this point, we know that cluster is not available (e.g. web environment)
-    if (_cluster === false) {
-      _eventBus = new EventBus()
-      return _eventBus
-    }
-
-    try {
-      _cluster = (await import('cluster')).default
-    } catch (e) {
-      _cluster = false
-      debug('cluster module not present')
-    }
-
-    return new EventBus()
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    _cluster = require('cluster')
+  } catch (e) {
+    _cluster = false
+    debug('cluster module not present')
   }
 
-  _promise = fn()
+  _eventBus = new EventBus()
 
-  return await _promise
+  return _eventBus
 }
 
 export async function shutdown(callback?: ShutdownCb): Promise<void> {
-  const eventBus = await getEventBus()
+  const eventBus = getEventBus()
 
   return eventBus.shutdown(callback)
 }
@@ -74,11 +57,8 @@ export async function shutdown(callback?: ShutdownCb): Promise<void> {
  * Some log writers will emit `log4ts:pause` event
  *
  * @example
- * getEventBus().then((v) =>
- *  v.on('log4ts:pause', (evt) => {
- *    console.log(evt)
- *  })
- * )
+ * const eventBus = getEventBus()
+ * eventBus.on('log4ts:pause', (evt) => {console.log(evt)})
  *
  */
 class EventBus extends EventEmitter<'log4ts:pause'> {
@@ -92,8 +72,6 @@ class EventBus extends EventEmitter<'log4ts:pause'> {
 
   /**  indicates if message sending is disabled */
   enabled: boolean = true
-
-  private mutex = new Mutex()
 
   constructor() {
     super()
@@ -115,72 +93,6 @@ class EventBus extends EventEmitter<'log4ts:pause'> {
       }
     } else {
       this.cluster = false
-    }
-  }
-
-  async unregisterLogger<TData extends any[], TContext extends Record<string, any>>(
-    logger: Logger<TData, TContext>
-  ) {
-    const release = await this.mutex.acquire()
-
-    try {
-      this._logWriterListeners = this._logWriterListeners.filter(
-        (v) => v.logger.loggerName !== logger.loggerName
-      )
-      this._loggers.delete(logger.loggerName)
-      this._cleanupOrphanedLogWriters()
-    } finally {
-      release()
-    }
-  }
-
-  async unregisterLogWriter<TFormattedData, TConfigA extends Record<string, any>>(
-    logWriter: LogWriter<TFormattedData, TConfigA>
-  ) {
-    const release = await this.mutex.acquire()
-
-    try {
-      this._logWriterListeners = this._logWriterListeners.filter(
-        (v) => v.logWriter.name !== logWriter.name
-      )
-      this._logWriters.delete(logWriter.name)
-      this._cleanupOrphanedLoggers()
-    } finally {
-      release()
-    }
-  }
-
-  /**
-   * Remove log writers from _logWriters that no longer have references in _logWriterListeners
-   */
-  private _cleanupOrphanedLogWriters() {
-    // Get all log writer names that are still referenced in listeners
-    const referencedLogWriterNames = new Set(
-      this._logWriterListeners.map((listener) => listener.logWriter.name)
-    )
-
-    // Remove log writers that are no longer referenced
-    for (const [logWriterName] of this._logWriters.entries()) {
-      if (!referencedLogWriterNames.has(logWriterName)) {
-        this._logWriters.delete(logWriterName)
-      }
-    }
-  }
-
-  /**
-   * Remove loggers from _loggers that no longer have references in _logWriterListeners
-   */
-  private _cleanupOrphanedLoggers() {
-    // Get all logger names that are still referenced in listeners
-    const referencedLoggerNames = new Set(
-      this._logWriterListeners.map((listener) => listener.logger.loggerName)
-    )
-
-    // Remove loggers that are no longer referenced
-    for (const [loggerName] of this._loggers.entries()) {
-      if (!referencedLoggerNames.has(loggerName)) {
-        this._loggers.delete(loggerName)
-      }
     }
   }
 
@@ -233,7 +145,7 @@ class EventBus extends EventEmitter<'log4ts:pause'> {
   }
 
   /** adds message listener */
-  async addMessageListener(
+  addMessageListener(
     conf: EventListenerConfig<any, any, any, any> & {
       logWriter: LogWriter<any, any>
     }
@@ -250,17 +162,11 @@ class EventBus extends EventEmitter<'log4ts:pause'> {
       throw new Error(`Duplicate logger name '${logger.loggerName}' detected`)
     }
 
-    const release = await this.mutex.acquire()
+    this._logWriterListeners.push({ levelName, listener, logger, logWriter })
 
-    try {
-      this._logWriterListeners.push({ levelName, listener, logger, logWriter })
+    this._logWriters.set(logWriter.name, logWriter)
 
-      this._logWriters.set(logWriter.name, logWriter)
-
-      this._loggers.set(logger.loggerName, logger)
-    } finally {
-      release()
-    }
+    this._loggers.set(logger.loggerName, logger)
   }
 
   public async shutdown(callback?: ShutdownCb) {
