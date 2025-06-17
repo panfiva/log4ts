@@ -62,7 +62,7 @@ const logWriter = new SplunkHecLogWriter<TransformedData>('SplunkLogWriter', {
   token,
 })
 
-logWriter.attachToLogger(logger, 'DEBUG', (event, logWriterName, _logWriterConfig) => {
+logWriter.register(logger, 'DEBUG', (event, logWriterName, _logWriterConfig) => {
   const index = event.data[0]
   const data = event.data[1]
 

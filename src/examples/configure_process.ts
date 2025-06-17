@@ -17,7 +17,7 @@ export const configure_process = (/** duration in seconds before exit */ duratio
 
   const logWriter = new ConsoleLogWriter<WriterData>('node_process_writer')
 
-  logWriter.attachToLogger(logger, 'DEBUG', (event) => {
+  logWriter.register(logger, 'DEBUG', (event) => {
     return [`[node_process_writer]:`, event.startTime, `[${event.level.levelName}]`, ...event.data]
   })
 

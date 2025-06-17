@@ -46,7 +46,7 @@ All examples are configured with process signal listeners to demonstrate event h
   - Writing to a rolling log file
   - Define data type of log function parameters
   - Process cleanup when `SIGINT` signal received
-  - Infer transform function parameters inside `<writer>.attachToLogger()`
+  - Infer transform function parameters inside `<writer>.register()`
 
 - [Multi-File Log Writer](./src/examples/multiFile.ts)
 

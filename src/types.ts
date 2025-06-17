@@ -108,7 +108,7 @@ export type LoggerConfig<TContext extends Record<string, any>> = {
   /**
    * controls what messages will be sent to log writers using message severity
    *
-   * Once requests are sent, they are received by log writers using LogWriter - Logger - Level mapping (see LogWriter.attachToLogger function)
+   * Once requests are sent, they are received by log writers using LogWriter - Logger - Level mapping (see LogWriter.register function)
    */
   level: LevelParam
 

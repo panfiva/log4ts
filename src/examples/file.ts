@@ -44,7 +44,7 @@ const fileWriter = new FileLogWriter('fileWriter', {
 
 // Data type for `fileWriter` and `logger` are used to infer
 // data types for `event`, `logWriterName`, `_logWriterConfig`
-fileWriter.attachToLogger(logger, 'DEBUG', (event, logWriterName, _logWriterConfig) => {
+fileWriter.register(logger, 'DEBUG', (event, logWriterName, _logWriterConfig) => {
   return (
     `${event.startTime.toISOString()} [${event.level}] ` +
     `[logger: ${event.loggerName}] [writer: ${logWriterName}]` +
