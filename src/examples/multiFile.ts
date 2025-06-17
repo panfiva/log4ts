@@ -49,8 +49,8 @@ const transformerFn: TransformerFnInferred<typeof logger1, typeof logWriter> = (
   _logWriterName,
   _logWriterConfig
 ) => {
-  const param: (string | number | boolean)[] = event.payload.data
-  const filename: string = event.payload.context?.filename as string
+  const param: (string | number | boolean)[] = event.data
+  const filename: string = event.context?.filename as string
   return { filename: filename, data: param.join(': ') }
 }
 
@@ -75,7 +75,7 @@ const transformerFn3: TransformerFnInferred<typeof logger3, typeof logWriter> = 
   _logWriterConfig
 ) => {
   // only one param is supported due to LoggerPayload3
-  const d = event.payload.data[0]
+  const d = event.data[0]
 
   const data: string = typeof d.data === 'object' ? JSON.stringify(d.data) : d.data.toString()
 

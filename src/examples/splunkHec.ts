@@ -63,15 +63,15 @@ const logWriter = new SplunkHecLogWriter<TransformedData>('SplunkLogWriter', {
 })
 
 logWriter.attachToLogger(logger, 'DEBUG', (event, logWriterName, _logWriterConfig) => {
-  const index = event.payload.data[0]
-  const data = event.payload.data[1]
+  const index = event.data[0]
+  const data = event.data[1]
 
   const { host, source, ...restData } = data
 
   const eventPayload: Payload & PayloadLogWriter = {
     ...restData,
-    severity: event.payload.level.levelName,
-    loggerName: event.payload.loggerName,
+    severity: event.level.levelName,
+    loggerName: event.loggerName,
     logWriterName,
     platform: 'v2',
   }
@@ -81,7 +81,7 @@ logWriter.attachToLogger(logger, 'DEBUG', (event, logWriterName, _logWriterConfi
     host,
     source,
     sourcetype: 'json',
-    time: event.payload.startTime.getTime() / 1000,
+    time: event.startTime.getTime() / 1000,
     index,
   }
 

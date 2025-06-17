@@ -74,10 +74,23 @@ export class LoggingEvent<
   TData extends Array<LoggerArg>,
   TContext extends Record<string, any> = never,
 > {
-  payload: Omit<RequiredBy<LoggingEventProps<TData, TContext>, 'context'>, 'level'> & {
-    startTime: Date
-    level: Level
-  } = {} as any
+  startTime: Date
+  level: Level
+  context: TContext
+
+  loggerName: string
+  /** objects to log */
+  data: TData
+  error?: Error
+  /** node process pid (`process.pid`) */
+  pid: number
+  location?: CallStack
+  cluster?: {
+    /** cluster.worker.id */
+    workerId: number
+    /** process.pid */
+    worker: number
+  }
 
   constructor(param: Omit<LoggingEventProps<TData, TContext>, 'pid'>) {
     const { loggerName, level, data, context = {} as TContext, location, error, cluster } = param
@@ -97,19 +110,17 @@ export class LoggingEvent<
     // level should always be here if we use types properly
     const levelInstance = levelRegistry.getLevel(level)!
 
-    this.payload = {
-      startTime: new Date(),
-      loggerName: loggerName,
-      data: data,
-      level: levelInstance,
-      context: { ...context }, // context might be empty if not passed in constructor
-      pid: process.pid,
-      /**
-       * error object that is used to extract stack trace
-       */
-      error: error,
-      location: locationVal,
-    }
+    this.startTime = new Date()
+    this.loggerName = loggerName
+    this.data = data
+    this.level = levelInstance
+    this.context = { ...context } // context might be empty if not passed in constructor
+    this.pid = process.pid
+    /**
+     * error object that is used to extract stack trace
+     */
+    this.error = error
+    this.location = locationVal
   }
 
   private static getLocationKeys() {
@@ -174,10 +185,10 @@ export class LoggingEvent<
         error: rehydratedEvent.error,
       })
 
-      event.payload.startTime = new Date(rehydratedEvent.startTime)
-      event.payload.pid = rehydratedEvent.pid
+      event.startTime = new Date(rehydratedEvent.startTime)
+      event.pid = rehydratedEvent.pid
       if (rehydratedEvent.cluster) {
-        event.payload.cluster = rehydratedEvent.cluster
+        event.cluster = rehydratedEvent.cluster
       }
     } catch (e) {
       event = new LoggingEvent({

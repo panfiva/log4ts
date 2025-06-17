@@ -110,8 +110,8 @@ class EventBus extends EventEmitter<'log4ts:pause'> {
 
     const listeners = this._logWriterListeners.filter(
       (v) =>
-        v.logger.loggerName === logEvent.payload.loggerName &&
-        logEvent.payload.level.isGreaterThanOrEqualTo(v.levelName)
+        v.logger.loggerName === logEvent.loggerName &&
+        logEvent.level.isGreaterThanOrEqualTo(v.levelName)
     )
 
     listeners.forEach((conf) => conf.listener(logEvent))
@@ -136,7 +136,7 @@ class EventBus extends EventEmitter<'log4ts:pause'> {
     }
     // if workers are used in multiprocess environment
     else {
-      // msg.payload.cluster = {
+      // msg.cluster = {
       //     workerId: cluster.worker.id,
       //     worker: process.pid,
       //   };

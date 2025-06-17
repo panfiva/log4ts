@@ -46,9 +46,9 @@ const fileWriter = new FileLogWriter('fileWriter', {
 // data types for `event`, `logWriterName`, `_logWriterConfig`
 fileWriter.attachToLogger(logger, 'DEBUG', (event, logWriterName, _logWriterConfig) => {
   return (
-    `${event.payload.startTime.toISOString()} [${event.payload.level}] ` +
-    `[logger: ${event.payload.loggerName}] [writer: ${logWriterName}]` +
-    ` ${event.payload.data[0]} [context] ${JSON.stringify(event.payload.context) ?? '{}'}`
+    `${event.startTime.toISOString()} [${event.level}] ` +
+    `[logger: ${event.loggerName}] [writer: ${logWriterName}]` +
+    ` ${event.data[0]} [context] ${JSON.stringify(event.context) ?? '{}'}`
   )
 })
 
