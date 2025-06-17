@@ -1,4 +1,4 @@
-export { LogWriter, ShutdownCb } from './logWriterClass'
+export { LogWriter, ShutdownCb } from './logWriter'
 export { FileLogWriter, FileLogWriterConfig } from './logWriters/fileLogWriter'
 export { ConsoleLogWriter } from './logWriters/consoleLogWriter'
 export { MultiFileLogWriter, MultiFileLogWriterOptions } from './logWriters/multiFileLogWriter'

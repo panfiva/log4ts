@@ -1,4 +1,4 @@
-import { LogWriter, ShutdownCb } from '../logWriterClass'
+import { LogWriter, ShutdownCb } from '../logWriter'
 import { FileLogWriter, FileLogWriterConfig } from './fileLogWriter'
 import path from 'path'
 import { Mutex } from 'async-mutex'
@@ -45,7 +45,7 @@ export class MultiFileLogWriter extends LogWriter<Payload, MultiFileLogWriterOpt
         )
         clearInterval(state.timer.interval)
 
-        state.writer._shutdown((err) => {
+        state.writer.shutdownWriter((err) => {
           if (err) {
             debug(`[${this.name}]: '${filename}' ignore error on file shutdown: %s`, err.message)
           }
@@ -67,7 +67,7 @@ export class MultiFileLogWriter extends LogWriter<Payload, MultiFileLogWriterOpt
     }
   }
 
-  write = async (payload: Payload) => {
+  protected _write = async (payload: Payload) => {
     const { baseDir, timeout, ...restConfig } = this.config
 
     /** combines `config.baseDir` and `payload.filename` */
@@ -119,7 +119,7 @@ export class MultiFileLogWriter extends LogWriter<Payload, MultiFileLogWriterOpt
           }
         }
         this.state.set(fileKey, state)
-        state.writer._write(payload.data)
+        state.writer.write(payload.data)
       } finally {
         release()
       }
@@ -129,19 +129,19 @@ export class MultiFileLogWriter extends LogWriter<Payload, MultiFileLogWriterOpt
       debug(`[${this.name}]: '${fileKey}' extending activity`)
       const { timer } = this.state.get(fileKey)!
       if (timer) timer.lastUsed = Date.now()
-      state.writer._write(payload.data)
+      state.writer.write(payload.data)
     } else {
-      state.writer._write(payload.data)
+      state.writer.write(payload.data)
     }
   }
 
-  shutdown = (cb?: ShutdownCb) => {
+  protected _shutdown = (cb?: ShutdownCb) => {
     const fileKeys = this.state.keys()
     fileKeys.forEach((fileKey) => {
       const v = this.state.get(fileKey)
       if (v?.timer) clearInterval(v.timer.interval)
       if (v?.writer)
-        v.writer._shutdown((err) => {
+        v.writer.shutdownWriter((err) => {
           if (err) {
             debug(`[${this.name}]: '${fileKey}' ignore error on file shutdown: %s`, err.message)
           }

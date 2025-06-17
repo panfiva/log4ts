@@ -1,4 +1,4 @@
-import { LogWriter } from '../logWriterClass'
+import { LogWriter } from '../logWriter'
 
 import debugLib from 'debug'
 const debug = debugLib('log4ts:logWriter:example')
@@ -19,7 +19,7 @@ export class ExampleLogWriter<
     debug(`Creating example log writer '${name}' ${JSON.stringify(this.config)}`)
   }
 
-  write = (data: TFormattedData) => {
+  protected _write = (data: TFormattedData) => {
     console.log(data)
   }
 }

@@ -49,8 +49,11 @@ export abstract class LogWriter<
     this.name = name
   }
 
-  /** use by EventBus to trigger shutdown */
-  _shutdown: ShutdownFn = async (cb) => {
+  /**
+   * Used by EventBus to trigger shutdown for appenders. During the shutdown,
+   * pending events will be granted 5 seconds to complete before executing `this._shutdown`
+   */
+  shutdownWriter: ShutdownFn = async (cb) => {
     this.isShuttingDown = true
 
     debugShutdown(
@@ -67,15 +70,15 @@ export abstract class LogWriter<
 
     debugShutdown(`[${this.name}]: initiating shutdown; ${this.activeWrites.size} pending writes`)
 
-    return this.shutdown(cb)
+    return this._shutdown(cb)
   }
 
   /** function executed on logWriter shutdown */
-  shutdown: ShutdownFn = (cb) => {
+  protected _shutdown: ShutdownFn = (cb) => {
     if (cb) cb()
   }
 
-  attachToLogger<TLogger extends Logger<any, any>>(
+  async attachToLogger<TLogger extends Logger<any, any>>(
     logger: TLogger,
 
     /**
@@ -92,7 +95,7 @@ export abstract class LogWriter<
       TConfigA,
       TLogger extends Logger<any, infer TContext> ? TContext : never
     >
-  ): void {
+  ): Promise<void> {
     // type TData = TLogger extends Logger<infer U, any> ? U : never
     // type TContext = TLogger extends Logger<any, infer U> ? U : never
 
@@ -102,16 +105,16 @@ export abstract class LogWriter<
     ) {
       const data = transformer(event, this.name, this.config)
 
-      this._write(data)
+      this.write(data)
     }.bind(this)
 
-    getEventBus().then((eventBus) => {
-      eventBus.addMessageListener({
-        levelName,
-        listener,
-        logWriter: this,
-        logger,
-      })
+    const eventBus = await getEventBus()
+
+    await eventBus.addMessageListener({
+      levelName,
+      listener,
+      logWriter: this,
+      logger,
     })
   }
 
@@ -125,12 +128,12 @@ export abstract class LogWriter<
    * execution is triggered by `EventBus.sendToListeners()` function call;
    * listeners are added to `EventBus.logWriterListeners` by `LogWriterClass.attachToLogger()`;
    */
-  _write: WriteMethod<TFormattedData> = async (data: TFormattedData) => {
+  write: WriteMethod<TFormattedData> = async (data: TFormattedData) => {
     const pointer = {}
     this.activeWrites.add(pointer)
 
     try {
-      await this.write(data)
+      await this._write(data)
     } catch (err: any) {
       // debugLogWriter(`[${this.name}]: error writing request`, err)
       console.error(`[${this.name}]:`, `error writing request`, err)
@@ -147,5 +150,11 @@ export abstract class LogWriter<
    *
    * Warning! Use _write when file writer needs to be used
    */
-  abstract write: WriteMethod<TFormattedData>
+  protected abstract _write: WriteMethod<TFormattedData>
+
+  /** unregister the writer and its loggers */
+  async unregister() {
+    const eventBus = await getEventBus()
+    await eventBus.unregisterLogWriter(this)
+  }
 }

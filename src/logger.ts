@@ -159,6 +159,12 @@ export class Logger<TData extends any[], TContext extends Record<string, any> = 
     this.context = {} as TContext
   }
 
+  /** unregister the logger and its writers */
+  async unregister() {
+    const eventBus = await getEventBus()
+    await eventBus.unregisterLogger(this)
+  }
+
   setParseCallStackFunction(parseFunction?: ParseCallStackFunction) {
     if (!parseFunction) this.parseCallStack = defaultParseCallStack
     else this.parseCallStack = parseFunction

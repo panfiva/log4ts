@@ -1,4 +1,4 @@
-import { LogWriter, ShutdownCb } from '../logWriterClass'
+import { LogWriter, ShutdownCb } from '../logWriter'
 
 import { RollingFileWriteStream } from '../rollingFileStream/RollingFileWriteStream'
 import * as path from 'path'
@@ -121,7 +121,7 @@ export class FileLogWriter extends LogWriter<FileLogWriterData, FileLogWriterCon
     return stream
   }
 
-  write = (data: FileLogWriterData): void => {
+  protected _write = (data: FileLogWriterData): void => {
     if (!this.writer.writable) {
       return
     }
@@ -153,7 +153,7 @@ export class FileLogWriter extends LogWriter<FileLogWriterData, FileLogWriterCon
     this.reopen()
   }
 
-  shutdown = (cb?: ShutdownCb) => {
+  protected _shutdown = (cb?: ShutdownCb) => {
     sighupListeners.delete(this)
     if (sighupListeners.size === 0 && mainSighupListenerStarted) {
       process.removeListener('SIGHUP', mainSighupHandler)

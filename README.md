@@ -29,7 +29,9 @@ yarn add @panfiva/log4ts
 
 - **Graceful shutdown**
 
-  Proper cleanup with `shutdown()` function
+  Proper cleanup with `log4ts.shutdown(cb)` function. Once executed, all loggers will stop
+  sending events to all registered log writers, and all log writers will receive shutdown
+  request via `LogWriter.shutdownWriter(cb)` function call.
 
 - **Built-in log writers**
 
@@ -58,23 +60,98 @@ All examples are configured with process signal listeners to demonstrate event h
   - Constrain log function args to specific data shape
   - Transform log function args to data shape supported by Splunk HEC logger
 
+## Shutdown
+
+Logging environment should execute `log4ts.shutdown(cb)` function before process exit.
+
+Additionally, individual log writers could be shutdown manually by executing
+`LogWriter.shutdownWriter(cb)`; this should be done to avoid memory leaks when
+dynamically creating and registering log writers in custom code.
+
+### Data loss during shutdown
+
+`Logger.log(data)` will NOT send data:
+
+- To all log writers after `log4ts.shutdown(cb)` is executed
+- To the log writer that was terminated by `<logWriter>.shutdownWriter(cb)` command
+
+However, direct calls to `LogWriter.write(data)` WILL be forwarded to log writers!
+
+**Warning!**
+
+To avoid data loss and unhandled exceptions, inspect `LogWriter.isShuttingDown`.
+to determine if shutdown event was triggered before calling `LogWriter.write(data)`.
+
 ## Custom log writers
 
 Custom log writers can be created by extending `LogWriter` class:
 
-- Define `config` property with proper config data type.
-- Define `shutdown = (cb?: ShutdownCb) => {...}` function
-  - This function must execute `cb()` after shutdown routines complete
-- Define `write = (data: LogWriterData): void = {...}` method
+- Extend `LogWriter` class with appropriate data types
 
-Call to `log4st.shutdown()` will trigger `LogWriter.shutdown(cb)` call for all
-registered log writers.
+  `FormattedData` - data that will be received by `LogWriter.write(data)` method
 
-Log writer is registered when `LogWriter.attachToLogger()` function is executed.
+  `Config` - configuration parameters for log writer
 
-Pending writes might be lost unless proper handling logic is
-added to log writer `write` and `shutdown` methods to track pending writes
-and wait for completion before proceeding with `shutdown` call
+  ```ts
+  class CustomWriter extends LogWriter<FormattedData, Config> {}
+  ```
+
+- Override protected `_shutdown` function, if needed
+
+  The shutdown function must execute `cb` before exit.
+
+  ```ts
+  // default function
+  protected _shutdown: ShutdownFn = (cb) => {
+    if (cb) cb()
+  }
+  ```
+
+- Define protected `_write` function
+
+  ```ts
+  // default function definition
+  type WriteMethod<D> = ((data: D) => Promise<void>) | ((data: D) => void)
+  protected abstract _write: WriteMethod<TFormattedData>
+  ```
+
+  The `_write` function will be called when `LogWriter.write(data)`
+  is called directly, or via `Logger.log(data)` calls
+
+## Unregistering log writers
+
+Registered log writers are stored in EventBus private properties.
+
+When loggers or log writers are not needed, registrations can be removed by running
+on of the following commands:
+
+- `logger.unregister()` - unregister the logger and its association to writers
+- `logWriter.unregister()` - unregister writer and its association to loggers
+
+This will allow JavaScript to garbage collect corresponding loggers and log writers
+when they are no longer used, freeing memory.
+
+Generally speaking, unregistering is not required when loggers should exist through
+the entire lifetime application execution. There are situations, however, when loggers
+and created dynamically and should only exist for a brief period of time.
+
+For example, a REST API service can register a new logger for each REST call and then
+terminate the logger once the request is fulfilled. In this model, one log writer will
+exist while the service is running, and new loggers will be created for each REST API
+request:
+
+```ts
+
+const writer = new LogWriter({ loggerName: 'writer'})
+
+function request_handler(request, response, next) {
+  const logger = new Logger( {loggerName: 'L2', level: 'DEBUG', context:{user:props.auth.user}} )
+  writer.attachToLogger(logger, 'DEBUG', transformFn),
+  ...
+  logger.unregister()
+  return response.send()
+}
+```
 
 ## Contributing
 
