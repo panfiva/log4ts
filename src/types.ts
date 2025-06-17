@@ -90,12 +90,12 @@ export type TransformerFn<
 ) => DA
 
 export type TransformerFnInferred<
-  TLogger extends Logger<any, any>,
+  TLogger extends Logger<any, any, any>,
   TLogWriter extends LogWriter<any, any>,
 > = (
   event: LoggingEvent<
-    TLogger extends Logger<infer TData, any> ? TData : never,
-    TLogger extends Logger<any, infer TContext> ? TContext : never
+    TLogger extends Logger<any, any, infer TDataOut> ? TDataOut : never,
+    TLogger extends Logger<any, infer TContext, any> ? TContext : never
   >,
   logWriterName: string,
   logWriterConfig: TLogWriter extends LogWriter<any, infer TConfigA> ? TConfigA : never
