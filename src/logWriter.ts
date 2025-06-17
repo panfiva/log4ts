@@ -151,4 +151,10 @@ export abstract class LogWriter<
    * Warning! Use _write when file writer needs to be used
    */
   protected abstract _write: WriteMethod<TFormattedData>
+
+  /** unregister the writer and its loggers */
+  async unregister() {
+    const eventBus = await getEventBus()
+    await eventBus.unregisterLogWriter(this)
+  }
 }
