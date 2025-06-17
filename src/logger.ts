@@ -20,7 +20,12 @@ const defaultErrorCallStackSkip = 3
 /**
  * Logger to log messages.
  */
-export class Logger<TData extends any[], TContext extends Record<string, any> = never> {
+export class Logger<
+  TData extends any[],
+  TContext extends Record<string, any> = never,
+  /** data format that is included in log event */
+  TDataOut extends any[] = TData,
+> {
   /** logger name */
   loggerName: string
 
@@ -82,6 +87,13 @@ export class Logger<TData extends any[], TContext extends Record<string, any> = 
     this.callStackSkipIndex = number
   }
 
+  /**
+   * This function can be used to overwrite how messages are formatted.
+   * This is useful when different classes (with different input params)
+   * share the same class name.
+   */
+  protected transform = (...args: TData): TDataOut => args as any
+
   private log(level: LevelParam, ...args: TData) {
     const levelRegistry = getLevelRegistry()
     const logLevel = levelRegistry.getLevel(level)
@@ -92,7 +104,7 @@ export class Logger<TData extends any[], TContext extends Record<string, any> = 
     }
 
     if (this.isLevelEnabled(logLevel)) {
-      this._log(logLevel, args)
+      this._log(logLevel, this.transform(...args))
     }
   }
 
@@ -113,9 +125,9 @@ export class Logger<TData extends any[], TContext extends Record<string, any> = 
     return true
   }
 
-  private _log(level: LevelParam, data: TData) {
+  private _log(level: LevelParam, data: TDataOut) {
     debug(`sending log data (${level}) to log writers`)
-    const error = data.find((item) => item instanceof Error)
+    const error = data.find((item: any) => item instanceof Error)
     let callStack
     if (this.useCallStack) {
       try {

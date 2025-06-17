@@ -17,10 +17,11 @@ export type EventListenerConfig<
   TContext extends Record<string, any>,
   TFormattedData,
   TConfigA extends Record<string, any>,
+  TDataOut extends Array<LoggerArg> = TData,
 > = {
   levelName: LevelName
   listener: (event: LoggingEvent<TData, TContext>) => void
-  logger: Logger<TData, TContext>
+  logger: Logger<TData, TContext, TDataOut>
   logWriter: LogWriter<TFormattedData, TConfigA>
 }
 
@@ -66,7 +67,7 @@ class EventBus extends EventEmitter<'log4ts:pause'> {
 
   private _logWriters: Map<string, LogWriter<any, any>> = new Map()
 
-  private _loggers: Map<string, Logger<any, any>> = new Map()
+  private _loggers: Map<string, Logger<any, any, any>> = new Map()
 
   cluster: Cluster | false
 
@@ -110,8 +111,8 @@ class EventBus extends EventEmitter<'log4ts:pause'> {
 
     const listeners = this._logWriterListeners.filter(
       (v) =>
-        v.logger.loggerName === logEvent.payload.loggerName &&
-        logEvent.payload.level.isGreaterThanOrEqualTo(v.levelName)
+        v.logger.loggerName === logEvent.loggerName &&
+        logEvent.level.isGreaterThanOrEqualTo(v.levelName)
     )
 
     listeners.forEach((conf) => conf.listener(logEvent))
@@ -136,7 +137,7 @@ class EventBus extends EventEmitter<'log4ts:pause'> {
     }
     // if workers are used in multiprocess environment
     else {
-      // msg.payload.cluster = {
+      // msg.cluster = {
       //     workerId: cluster.worker.id,
       //     worker: process.pid,
       //   };

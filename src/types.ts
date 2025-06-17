@@ -90,12 +90,12 @@ export type TransformerFn<
 ) => DA
 
 export type TransformerFnInferred<
-  TLogger extends Logger<any, any>,
+  TLogger extends Logger<any, any, any>,
   TLogWriter extends LogWriter<any, any>,
 > = (
   event: LoggingEvent<
-    TLogger extends Logger<infer TData, any> ? TData : never,
-    TLogger extends Logger<any, infer TContext> ? TContext : never
+    TLogger extends Logger<any, any, infer TDataOut> ? TDataOut : never,
+    TLogger extends Logger<any, infer TContext, any> ? TContext : never
   >,
   logWriterName: string,
   logWriterConfig: TLogWriter extends LogWriter<any, infer TConfigA> ? TConfigA : never
@@ -108,7 +108,7 @@ export type LoggerConfig<TContext extends Record<string, any>> = {
   /**
    * controls what messages will be sent to log writers using message severity
    *
-   * Once requests are sent, they are received by log writers using LogWriter - Logger - Level mapping (see LogWriter.attachToLogger function)
+   * Once requests are sent, they are received by log writers using LogWriter - Logger - Level mapping (see LogWriter.register function)
    */
   level: LevelParam
 

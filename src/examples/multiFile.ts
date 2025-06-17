@@ -49,13 +49,13 @@ const transformerFn: TransformerFnInferred<typeof logger1, typeof logWriter> = (
   _logWriterName,
   _logWriterConfig
 ) => {
-  const param: (string | number | boolean)[] = event.payload.data
-  const filename: string = event.payload.context?.filename as string
+  const param: (string | number | boolean)[] = event.data
+  const filename: string = event.context?.filename as string
   return { filename: filename, data: param.join(': ') }
 }
 
-logWriter.attachToLogger(logger1, 'DEBUG', transformerFn)
-logWriter.attachToLogger(logger2, 'DEBUG', transformerFn)
+logWriter.register(logger1, 'DEBUG', transformerFn)
+logWriter.register(logger2, 'DEBUG', transformerFn)
 
 /** only one argument {filename, data} is accepted */
 type LoggerPayload3 = [{ fileName: string; data: string | number | boolean | Record<string, any> }]
@@ -75,7 +75,7 @@ const transformerFn3: TransformerFnInferred<typeof logger3, typeof logWriter> = 
   _logWriterConfig
 ) => {
   // only one param is supported due to LoggerPayload3
-  const d = event.payload.data[0]
+  const d = event.data[0]
 
   const data: string = typeof d.data === 'object' ? JSON.stringify(d.data) : d.data.toString()
 
@@ -83,7 +83,7 @@ const transformerFn3: TransformerFnInferred<typeof logger3, typeof logWriter> = 
   return { filename: filename, data: data }
 }
 
-logWriter.attachToLogger(logger3, 'DEBUG', transformerFn3)
+logWriter.register(logger3, 'DEBUG', transformerFn3)
 
 logger1.info(`logger 1 message`, `${new Date().toISOString()}`)
 logger2.info(`logger 2 message`, `${new Date().toISOString()}`)

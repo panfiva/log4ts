@@ -78,7 +78,7 @@ export abstract class LogWriter<
     if (cb) cb()
   }
 
-  attachToLogger<TLogger extends Logger<any, any>>(
+  register<TLogger extends Logger<any, any, any>>(
     logger: TLogger,
 
     /**
@@ -90,10 +90,10 @@ export abstract class LogWriter<
 
     /** callback function that transforms event payload to format accepted by logWriter  */
     transformer: TransformerFn<
-      TLogger extends Logger<infer TData, any> ? TData : never,
+      TLogger extends Logger<any, any, infer TDataOut> ? TDataOut : never,
       TFormattedData,
       TConfigA,
-      TLogger extends Logger<any, infer TContext> ? TContext : never
+      TLogger extends Logger<any, infer TContext, any> ? TContext : never
     >
   ): void {
     // type TData = TLogger extends Logger<infer U, any> ? U : never
@@ -126,7 +126,7 @@ export abstract class LogWriter<
    * - removes event from `this.activeWrites`
    *
    * execution is triggered by `EventBus.sendToListeners()` function call;
-   * listeners are added to `EventBus.logWriterListeners` by `LogWriterClass.attachToLogger()`;
+   * listeners are added to `EventBus.logWriterListeners` by `LogWriterClass.register()`;
    */
   write: WriteMethod<TFormattedData> = async (data: TFormattedData) => {
     const pointer = {}

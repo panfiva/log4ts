@@ -48,6 +48,7 @@
     "logWriter",
     "multiprocess",
     "panfiva",
+    "refid",
     "serialize",
     "sourcetype",
     "yarnrc"

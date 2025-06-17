@@ -37,6 +37,28 @@ yarn add @panfiva/log4ts
 
   Rolling File and Splunk HEC
 
+## Basic Example
+
+```ts
+const logger = new Logger({ loggerName: 'L', level: 'INFO', context: { label: 'test' } })
+const writer1 = new ConsoleLogWriter('W1')
+const writer2 = new ConsoleLogWriter('W2')
+
+writer1.register(logger, 'INFO', (event, writerName, writerConfig) => {
+  const { data, startTime, context, level } = event
+  return [{ data, startTime, context, level, writerName, writerConfig }]
+})
+
+writer2.register(logger, 'WARN', (event, writerName, writerConfig) => {
+  const { data, startTime, context, level } = event
+  return [{ data, startTime, context, level, writerName, writerConfig }]
+})
+
+logger.debug('debug-test') // will not send due to logger level
+logger.info('debug-info') // will send events only to W2
+logger.error('debug-warn') // will send events to W1 and W2
+```
+
 ## Examples
 
 All examples are configured with process signal listeners to demonstrate event handling
@@ -46,7 +68,7 @@ All examples are configured with process signal listeners to demonstrate event h
   - Writing to a rolling log file
   - Define data type of log function parameters
   - Process cleanup when `SIGINT` signal received
-  - Infer transform function parameters inside `<writer>.attachToLogger()`
+  - Infer transform function parameters inside `<writer>.register()`
 
 - [Multi-File Log Writer](./src/examples/multiFile.ts)
 
@@ -59,6 +81,15 @@ All examples are configured with process signal listeners to demonstrate event h
 
   - Constrain log function args to specific data shape
   - Transform log function args to data shape supported by Splunk HEC logger
+
+- [Custom Context](src/examples/customContext.ts)
+
+  - Create a second instance of a logger with different context
+
+- [Custom Logger Output](src/examples/customLoggerOutput.ts)
+
+  - Create 2 classes that accept different data format to be
+    forwarded to a shared event writer
 
 ## Shutdown
 
@@ -117,6 +148,52 @@ Custom log writers can be created by extending `LogWriter` class:
 
   The `_write` function will be called when `LogWriter.write(data)`
   is called directly, or via `Logger.log(data)` calls
+
+## Custom loggers
+
+Custom loggers can be used to reformat logger payload before sending data
+to log writers.
+
+```ts
+class Logger2 extends Logger<TData, TContext, TDataOut> {
+  // must return same data type as returned by the main class
+  transform = (...data: TData): TDataOut => {
+    return ['updated', ...data]
+  }
+}
+```
+
+See [Customize logger payload](./README.md#customize-logger-payload)
+
+## Logger context update
+
+Most of the time, loggers are defined and registered only once in the application.
+When logger is used, its context is set globally. Any changes to logger context will
+impact all other logger log requests.
+
+There are situations, however, when loggers need to be created with a context that is
+unique to a specific transaction. This can be accomplished as follows:
+
+- Create a global logger and register it to appropriate log writers
+- Create a second logger with the same name, but different context
+
+**Warning!** Do not register the new logger with any log writers
+
+See [Custom Context](src/examples/customContext.ts) example for details.
+
+## Customize logger payload
+
+If logger is expected to receive different data shape, logger can be registered with
+a transform function that is built to handle different data shapes. This approach
+has the following issues:
+
+- may increase complexity of registered transform function
+- may require changing data payload format to indicate its type, impacting ease of use
+
+A better approach is to create a new logger class that uses `Logger.format()` to reformat
+user input before data is sent to the registered transformer.
+
+See [Custom Logger Output](src/examples/customLoggerOutput.ts)
 
 ## Contributing
 
