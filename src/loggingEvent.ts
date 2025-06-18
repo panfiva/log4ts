@@ -1,7 +1,7 @@
 import flatted from 'flatted'
-import type { LevelParam, CallStack, LoggerArg, RequiredBy } from './types'
+import type { LevelParam, CallStack, LoggerArg } from './types'
 import { getLevelRegistry } from './level'
-import type { Level } from 'level'
+import type { Level } from './level'
 
 import { pick, omitBy } from 'lodash'
 
