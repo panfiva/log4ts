@@ -157,7 +157,7 @@ to log writers.
 ```ts
 class Logger2 extends Logger<TData, TContext, TDataOut> {
   // must return same data type as returned by the main class
-  transform = (...data: TData): TDataOut => {
+  transform = (...data: TData): { data: TDataOut; event?: Error } => {
     return ['updated', ...data]
   }
 }

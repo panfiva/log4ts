@@ -11,20 +11,26 @@ import { configure_process } from './configure_process'
 // see function configurations to see how process events can be handled
 configure_process(2)
 
-type TMain = [string]
-type TCustom = [{ data: string; type: 't1' | 't2' }]
+/** first logger input - one string arg */
+type TDataIn = [string]
 
-const logger = new Logger<TMain>({ loggerName: 'L', level: 'INFO' })
+/** second logger input - one record arg */
+type TCustomDataIn = [{ data: string; type: 't1' | 't2' }]
+
+/** both loggers must return the same data */
+type TOut = string
+
+const logger = new Logger<TDataIn, never, TOut>({ loggerName: 'L', level: 'INFO' })
 const writer = new ConsoleLogWriter('W2')
 
 writer.register(logger, 'INFO', (event, _writerName, _writerConfig) => {
   return [event.data[0].concat('!')]
 })
 
-class Logger2 extends Logger<TCustom, never, TMain> {
+class Logger2 extends Logger<TCustomDataIn, never, TOut> {
   // must return same data type as returned by the main class
-  transform = (...data: TCustom): TMain => {
-    return [JSON.stringify(data[0])]
+  transform = (...data: TCustomDataIn): { data: TOut; error?: Error } => {
+    return { data: JSON.stringify(data[0]), error: undefined }
   }
 }
 

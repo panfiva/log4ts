@@ -24,7 +24,7 @@ export class Logger<
   TData extends any[],
   TContext extends Record<string, any> = never,
   /** data format that is included in log event */
-  TDataOut extends any[] = TData,
+  TDataOut = TData,
 > {
   /** logger name */
   loggerName: string
@@ -91,8 +91,15 @@ export class Logger<
    * This function can be used to overwrite how messages are formatted.
    * This is useful when different classes (with different input params)
    * share the same class name.
+   *
+   * @returns
+   * - `data` to be send as message payload
+   * - `error` that can be used for stacktrace (not used in payload)
    */
-  protected transform = (...args: TData): TDataOut => args as any
+  protected transform = (...args: TData): { data: TDataOut; error?: Error } => {
+    const error = args.find((item: any) => item instanceof Error)
+    return { data: args as any, error }
+  }
 
   private log(level: LevelParam, ...args: TData) {
     const levelRegistry = getLevelRegistry()
@@ -104,7 +111,8 @@ export class Logger<
     }
 
     if (this.isLevelEnabled(logLevel)) {
-      this._log(logLevel, this.transform(...args))
+      const transformedData = this.transform(...args)
+      this._log(logLevel, transformedData.data, transformedData.error)
     }
   }
 
@@ -125,9 +133,9 @@ export class Logger<
     return true
   }
 
-  private _log(level: LevelParam, data: TDataOut) {
+  private _log(level: LevelParam, data: TDataOut, error?: Error) {
     debug(`sending log data (${level}) to log writers`)
-    const error = data.find((item: any) => item instanceof Error)
+
     let callStack
     if (this.useCallStack) {
       try {
