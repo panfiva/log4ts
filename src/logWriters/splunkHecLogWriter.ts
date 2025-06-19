@@ -2,7 +2,7 @@ import { LogWriter } from '../logWriter'
 
 import axios from 'axios'
 import https from 'https'
-import { transformAxiosError } from './transformAxiosError'
+import { transformAxiosError } from '../utils/transformAxiosError'
 
 const agent = new https.Agent({
   rejectUnauthorized: false, // Use if Splunk cert is self-signed

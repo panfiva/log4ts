@@ -11,3 +11,6 @@ export { Logger } from './logger'
 export { getLevelRegistry } from './level'
 export type * from './types'
 export { shutdown } from './eventBus'
+
+export { toPlainObject } from './utils/toPlainObject'
+export { transformAxiosError } from './utils/transformAxiosError'
