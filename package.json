@@ -1,7 +1,7 @@
 {
   "name": "@panfiva/log4ts",
   "packageManager": "yarn@4.9.2",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "description": "Port of log4js-node to TypeScript",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

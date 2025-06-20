@@ -8,6 +8,8 @@ import { getLevelRegistry } from './level'
 import { getEventBus } from './eventBus'
 import { defaultParseCallStack, ParseCallStackFunction } from './defaultParseCallStack'
 
+export type TransformFunctionReturn<T> = { data: T; error?: Error | Record<string, any> }
+
 /**
  * The top entry is the Error
  */
@@ -96,7 +98,7 @@ export class Logger<
    * - `data` to be send as message payload
    * - `error` that can be used for stacktrace (not used in payload)
    */
-  protected transform = (...args: TData): { data: TDataOut; error?: Error } => {
+  protected transform = (...args: TData): TransformFunctionReturn<TDataOut> => {
     const error = args.find((item: any) => item instanceof Error)
     return { data: args as any, error }
   }
@@ -133,7 +135,7 @@ export class Logger<
     return true
   }
 
-  private _log(level: LevelParam, data: TDataOut, error?: Error) {
+  private _log(level: LevelParam, data: TDataOut, error?: Error | Record<string, any>) {
     debug(`sending log data (${level}) to log writers`)
 
     let callStack
