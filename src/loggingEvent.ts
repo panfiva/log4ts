@@ -1,5 +1,5 @@
 import flatted from 'flatted'
-import type { LevelParam, CallStack, LoggerArg } from './types'
+import type { LevelParam, CallStack } from './types'
 import { getLevelRegistry } from './level'
 import type { Level } from './level'
 
