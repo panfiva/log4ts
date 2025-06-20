@@ -24,7 +24,7 @@ yarn add @panfiva/log4ts
 
 - **Shared log writers**
 
-  Attach multiple loggers to the same log writer with different transform functions.
+  Attach multiple loggers to the same log writer by customizing `Logger.transform()`.
   This allows users to send send different data shapes in a type-safe manner
 
 - **Graceful shutdown**
@@ -68,14 +68,14 @@ All examples are configured with process signal listeners to demonstrate event h
   - Writing to a rolling log file
   - Define data type of log function parameters
   - Process cleanup when `SIGINT` signal received
-  - Infer transform function parameters inside `<writer>.register()`
+  - Infer layout function parameters inside `<writer>.register()`
 
 - [Multi-File Log Writer](./src/examples/multiFile.ts)
 
   - Write to the same file using different loggers
   - Dynamically define which file will be used based on data attributes
   - Set and use logger context
-  - Explicitly define transform function data type to infer its parameters
+  - Explicitly define layout function data type to infer its parameters
 
 - [Splunk HEC Log Writer](./src/examples/splunkHec.ts)
 
@@ -183,15 +183,15 @@ See [Custom Context](src/examples/customContext.ts) example for details.
 
 ## Customize logger payload
 
-If logger is expected to receive different data shape, logger can be registered with
-a transform function that is built to handle different data shapes. This approach
+When multiple instances of a logger expect to receive different data formats,
+registered layout function must be to handle different data shapes. This approach
 has the following issues:
 
-- may increase complexity of registered transform function
-- may require changing data payload format to indicate its type, impacting ease of use
+- may increase complexity of registered layout function
+- may require changing logger log function args to differentiate input - impacts usability
 
 A better approach is to create a new logger class that uses `Logger.format()` to reformat
-user input before data is sent to the registered transformer.
+user input before data is sent to the registered layout function.
 
 See [Custom Logger Output](src/examples/customLoggerOutput.ts)
 

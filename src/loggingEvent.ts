@@ -55,12 +55,26 @@ const serializer = new Serializer()
 type LoggingEventProps<TData, TContext extends Record<string, any>> = {
   loggerName: string
   level: LevelParam
-  /** objects to log */
+
+  /**
+   * Data or errors to log
+   *
+   * Depending on use-cases, errors can be moved to `error` attribute;
+   * If that's the case, registered layout and/or logger transform functions
+   * will need to be updated accordingly
+   */
   data: TData
-  error?: Error
+
+  /**
+   * error object or error export
+   * can he used to differentiate errors from regular data
+   */
+  error?: Error | Record<string, any>
+
   context?: TContext
   /** node process pid (`process.pid`) */
   pid: number
+
   location?: CallStack
   cluster?: {
     /** cluster.worker.id */
@@ -76,11 +90,25 @@ export class LoggingEvent<TData, TContext extends Record<string, any> = never> {
   context: TContext
 
   loggerName: string
-  /** objects to log */
+
+  /**
+   * Data or errors to log
+   *
+   * Depending on use-cases, errors can be moved to `error` attribute;
+   * If that's the case, registered layout and/or logger transform functions
+   * will need to be updated accordingly
+   */
   data: TData
-  error?: Error
+
+  /**
+   * error object or error export
+   * can he used to differentiate errors from regular data
+   */
+  error?: Error | Record<string, any>
+
   /** node process pid (`process.pid`) */
   pid: number
+
   location?: CallStack
   cluster?: {
     /** cluster.worker.id */

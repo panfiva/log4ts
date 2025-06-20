@@ -7,7 +7,7 @@ export {
   SplunkHecLogWriterConfig,
   SplunkData,
 } from './logWriters/splunkHecLogWriter'
-export { Logger } from './logger'
+export { Logger, TransformFunctionReturn } from './logger'
 export { getLevelRegistry } from './level'
 export type * from './types'
 export { shutdown } from './eventBus'

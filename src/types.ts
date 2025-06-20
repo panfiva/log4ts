@@ -70,7 +70,7 @@ export type RequiredBy<T, K extends keyof T> = Omit<T, K> & Required<Pick<T, K>>
 
 export type EmptyObject = { [K in any]: never }
 
-export type TransformerFn<
+export type LayoutFn<
   // Logger data shape
   D extends Array<LoggerArg> = Array<LoggerArg>,
   // logWriter configs
@@ -89,7 +89,7 @@ export type TransformerFn<
   }
 ) => DA
 
-export type TransformerFnInferred<
+export type LayoutFnInferred<
   TLogger extends Logger<any, any, any>,
   TLogWriter extends LogWriter<any, any>,
 > = (

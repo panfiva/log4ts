@@ -3,7 +3,7 @@ export DEBUG=log4ts:logWriter:multiFileLogWriter,log4ts:logWriter:shutdown,log4t
 yarn run build && node ./dist/examples/multiFile.js
 */
 
-import { Logger, MultiFileLogWriter, MultiFileLogWriterOptions, TransformerFnInferred } from '..'
+import { Logger, MultiFileLogWriter, MultiFileLogWriterOptions, LayoutFnInferred } from '..'
 
 import { configure_process } from './configure_process'
 
@@ -26,7 +26,7 @@ const logWriter = new MultiFileLogWriter('writer-name', options)
 type LoggerPayload = (string | number | boolean)[]
 
 // Example 1 - Add file name using context during logger creation
-// context value will be used in transformerFn
+// context value will be used in layoutFn
 const logger1 = new Logger<LoggerPayload, { filename: string }>({
   loggerName: 'logger-name-1',
   level: 'DEBUG',
@@ -34,17 +34,17 @@ const logger1 = new Logger<LoggerPayload, { filename: string }>({
 })
 
 // Example 1 - Add file name using context that is defined after logger is created
-// context value will be used in transformerFn
+// context value will be used in layoutFn
 const logger2 = new Logger<LoggerPayload, { filename: string }>({
   loggerName: 'logger-name-2',
   level: 'DEBUG',
 })
 logger2.addContext('filename', 'test2.log')
 
-// `TransformerFnInferred` is used to infer transform function parameters:
+// `LayoutFnInferred` is used to infer layout function parameters:
 // `event`, `_logWriterName`, `_logWriterConfig`
-// Can also use `TransformerFn` but it requires more input
-const transformerFn: TransformerFnInferred<typeof logger1, typeof logWriter> = (
+// Can also use `LayoutFn` but it requires more input
+const layoutFn: LayoutFnInferred<typeof logger1, typeof logWriter> = (
   event,
   _logWriterName,
   _logWriterConfig
@@ -54,8 +54,8 @@ const transformerFn: TransformerFnInferred<typeof logger1, typeof logWriter> = (
   return { filename: filename, data: param.join(': ') }
 }
 
-logWriter.register(logger1, 'DEBUG', transformerFn)
-logWriter.register(logger2, 'DEBUG', transformerFn)
+logWriter.register(logger1, 'DEBUG', layoutFn)
+logWriter.register(logger2, 'DEBUG', layoutFn)
 
 /** only one argument {filename, data} is accepted */
 type LoggerPayload3 = [{ fileName: string; data: string | number | boolean | Record<string, any> }]
@@ -66,10 +66,10 @@ const logger3 = new Logger<LoggerPayload3>({
   level: 'DEBUG',
 })
 
-// TransformerFnInferred is used to infer transform function parameters
+// LayoutFnInferred is used to infer layout function parameters
 // `event`, `_logWriterName`, `_logWriterConfig`
-// Can also use `TransformerFn` but it requires more input
-const transformerFn3: TransformerFnInferred<typeof logger3, typeof logWriter> = (
+// Can also use `LayoutFn` but it requires more input
+const layoutFn3: LayoutFnInferred<typeof logger3, typeof logWriter> = (
   event,
   _logWriterName,
   _logWriterConfig
@@ -83,7 +83,7 @@ const transformerFn3: TransformerFnInferred<typeof logger3, typeof logWriter> = 
   return { filename: filename, data: data }
 }
 
-logWriter.register(logger3, 'DEBUG', transformerFn3)
+logWriter.register(logger3, 'DEBUG', layoutFn3)
 
 logger1.info(`logger 1 message`, `${new Date().toISOString()}`)
 logger2.info(`logger 2 message`, `${new Date().toISOString()}`)

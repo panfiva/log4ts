@@ -14,7 +14,7 @@ export type ShutdownCb = ((e?: Error) => void) | ((e?: Error) => Promise<void>)
 
 export type ShutdownFn = ((cb?: ShutdownCb) => Promise<void>) | ((cb?: ShutdownCb) => void)
 
-export type TransformerFn<
+export type LayoutFn<
   TData extends Array<LoggerArg>,
   TFormattedData,
   TConfigA extends Record<string, any>,
@@ -89,7 +89,7 @@ export abstract class LogWriter<
     levelName: LevelName,
 
     /** callback function that transforms event payload to format accepted by logWriter  */
-    transformer: TransformerFn<
+    layoutFn: LayoutFn<
       TLogger extends Logger<any, any, infer TDataOut> ? TDataOut : never,
       TFormattedData,
       TConfigA,
@@ -103,7 +103,7 @@ export abstract class LogWriter<
       this: LogWriter<TFormattedData, TConfigA>,
       event: LoggingEvent<any, any> // do not use TData and TContext since we are pushing generic listeners
     ) {
-      const data = transformer(event, this.name, this.config)
+      const data = layoutFn(event, this.name, this.config)
 
       this.write(data)
     }.bind(this)
@@ -146,7 +146,7 @@ export abstract class LogWriter<
 
   /**
    * function that writes event data
-   * At this point, data is transformed by the Transformer class
+   * At this point, data is transformed by the registered layout function
    *
    * Warning! Use _write when file writer needs to be used
    */
