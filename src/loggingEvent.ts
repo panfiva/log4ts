@@ -52,7 +52,7 @@ class Serializer {
 }
 const serializer = new Serializer()
 
-type LoggingEventProps<TData extends Array<LoggerArg>, TContext extends Record<string, any>> = {
+type LoggingEventProps<TData, TContext extends Record<string, any>> = {
   loggerName: string
   level: LevelParam
   /** objects to log */
@@ -70,10 +70,7 @@ type LoggingEventProps<TData extends Array<LoggerArg>, TContext extends Record<s
   }
 }
 
-export class LoggingEvent<
-  TData extends Array<LoggerArg>,
-  TContext extends Record<string, any> = never,
-> {
+export class LoggingEvent<TData, TContext extends Record<string, any> = never> {
   startTime: Date
   level: Level
   context: TContext
