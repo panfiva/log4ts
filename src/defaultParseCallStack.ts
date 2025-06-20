@@ -3,7 +3,7 @@ import type { CallStack } from './types'
 const stackReg = /^(?:\s*)at (?:(.+) \()?(?:([^(]+?):(\d+):(\d+))\)?$/
 
 export type ParseCallStackFunction = (
-  data: Error | Record<string, any>,
+  data: Error | { message: string; stack?: string; [x: string]: any },
   skipIdx?: number
 ) => CallStack | undefined
 
@@ -11,7 +11,7 @@ export type ParseCallStackFunction = (
  * Extracts callstack from error - returns an entry that generated the error
  */
 export const defaultParseCallStack: ParseCallStackFunction = (
-  data: Error | Record<string, any>,
+  data: Error | { message: string; stack?: string; [x: string]: any },
   // The _log function is 3 levels deep, we need to skip those to make it to the callSite
   // Plus top entry is Error
   skipIdx = 4

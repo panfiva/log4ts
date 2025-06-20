@@ -8,7 +8,10 @@ import { getLevelRegistry } from './level'
 import { getEventBus } from './eventBus'
 import { defaultParseCallStack, ParseCallStackFunction } from './defaultParseCallStack'
 
-export type TransformFunctionReturn<T> = { data: T; error?: Error | Record<string, any> }
+export type TransformFunctionReturn<T> = {
+  data: T
+  error?: { message: string; stack?: string; [x: string]: any }
+}
 
 /**
  * The top entry is the Error
@@ -135,7 +138,11 @@ export class Logger<
     return true
   }
 
-  private _log(level: LevelParam, data: TDataOut, error?: Error | Record<string, any>) {
+  private _log(
+    level: LevelParam,
+    data: TDataOut,
+    error?: Error | { message: string; stack?: string; [x: string]: any }
+  ) {
     debug(`sending log data (${level}) to log writers`)
 
     let callStack

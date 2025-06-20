@@ -69,7 +69,7 @@ type LoggingEventProps<TData, TContext extends Record<string, any>> = {
    * error object or error export
    * can he used to differentiate errors from regular data
    */
-  error?: Error | Record<string, any>
+  error?: Error | { message: string; stack?: string; [x: string]: any }
 
   context?: TContext
   /** node process pid (`process.pid`) */
@@ -104,7 +104,7 @@ export class LoggingEvent<TData, TContext extends Record<string, any> = never> {
    * error object or error export
    * can he used to differentiate errors from regular data
    */
-  error?: Error | Record<string, any>
+  error?: Error | { message: string; stack?: string; [x: string]: any }
 
   /** node process pid (`process.pid`) */
   pid: number
