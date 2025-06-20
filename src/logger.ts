@@ -10,7 +10,7 @@ import { defaultParseCallStack, ParseCallStackFunction } from './defaultParseCal
 
 export type TransformFunctionReturn<T> = {
   data: T
-  error?: { message: string; stack?: string; [x: string]: any }
+  error?: Error | { message: string; stack?: string; [x: string]: any }
 }
 
 /**
