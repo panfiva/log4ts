@@ -9,6 +9,8 @@ export type FileNameFormatterOptions = {
   fileNameSep?: string
 }
 
+export type FileSyncNameFormatterOptions = Omit<FileNameFormatterOptions, 'compress'>
+
 export type FileNameParserOptions = {
   file: path.ParsedPath
   keepFileExt?: boolean
@@ -25,7 +27,15 @@ export type ParsedFilename = {
   filename: string
   index: number
   isCompressed: boolean
+  /**
+   * file date extracted from file name;
+   * only populated for date files
+   */
   date?: string
+  /**
+   * current time
+   * only populated for date files
+   */
   timestamp?: number
 }
 
@@ -39,6 +49,7 @@ export type FileNameParserFn = (f: string, p?: ParsedFilename) => ParsedFilename
 export type RollingFileWriteStreamOptions = {
   /**
    * The maximum number of files to keep.
+   * If undefined, keep all
    */
   backups?: number
   /**
@@ -80,3 +91,5 @@ export type RollingFileWriteStreamOptions = {
   /** File name separator */
   fileNameSep?: string
 }
+
+export type RollingFileSyncWriteStreamOptions = Omit<RollingFileWriteStreamOptions, 'compress'>
