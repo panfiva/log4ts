@@ -139,7 +139,7 @@ export class RollingFileWriteStream extends Writable {
     const defaultOptions: RollingFileWriteStreamConfigs = {
       maxSize: 0,
       backups: 4,
-      encoding: 'utf8',
+      encoding: 'utf-8',
       mode: parseInt('0600', 8), // 0o600 in octal
       flags: 'a',
       compress: false,

@@ -108,6 +108,8 @@ export class RollingFileWriteSyncStream {
 
     debug(`constructor: create new file ${this.filename}, state=${JSON.stringify(this.state)}`)
     this._touchFile()
+
+    this._shouldRoll()
   }
 
   _setExistingSizeAndDate(): void {
@@ -129,7 +131,7 @@ export class RollingFileWriteSyncStream {
     const defaultOptions: RollingFileSyncWriteStreamConfigs = {
       maxSize: 0,
       backups: 4,
-      encoding: 'utf8',
+      encoding: 'utf-8',
       mode: parseInt('0600', 8), // 0o600 in octal
       flags: 'a',
       keepFileExt: false,
@@ -151,7 +153,7 @@ export class RollingFileWriteSyncStream {
   }
 
   /** overwrite Stream._write */
-  _write(chunk: any, encoding: BufferEncoding): void {
+  write(chunk: any, encoding: BufferEncoding): void {
     this._shouldRoll()
 
     this.state.currentSize += chunk.length

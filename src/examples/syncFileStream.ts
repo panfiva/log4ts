@@ -17,25 +17,25 @@ const stream1 = new RollingFileWriteSyncStream('./logs/rolling-1.txt', {
   maxSize: 5,
   backups: 1,
 })
-stream1._write('1-12345', 'utf-8')
-stream1._write('2-12345', 'utf-8')
-stream1._write('3-12345', 'utf-8')
-stream1._write('4-12345', 'utf-8')
+stream1.write('1-12345', 'utf-8')
+stream1.write('2-12345', 'utf-8')
+stream1.write('3-12345', 'utf-8')
+stream1.write('4-12345', 'utf-8')
 
 const stream0 = new RollingFileWriteSyncStream('./logs/rolling-0.txt', {
   maxSize: 5,
   backups: 0,
 })
-stream0._write('1-12345', 'utf-8')
-stream0._write('2-12345', 'utf-8')
-stream0._write('3-12345', 'utf-8')
-stream0._write('4-12345', 'utf-8')
+stream0.write('1-12345', 'utf-8')
+stream0.write('2-12345', 'utf-8')
+stream0.write('3-12345', 'utf-8')
+stream0.write('4-12345', 'utf-8')
 
 const streamUndef = new RollingFileWriteSyncStream('./logs/rolling-undef.txt', {
   maxSize: 5,
   backups: undefined,
 })
-streamUndef._write('1-12345', 'utf-8')
-streamUndef._write('2-12345', 'utf-8')
-streamUndef._write('3-12345', 'utf-8')
-streamUndef._write('4-12345', 'utf-8')
+streamUndef.write('1-12345', 'utf-8')
+streamUndef.write('2-12345', 'utf-8')
+streamUndef.write('3-12345', 'utf-8')
+streamUndef.write('4-12345', 'utf-8')
