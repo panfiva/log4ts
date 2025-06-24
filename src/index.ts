@@ -15,3 +15,4 @@ export { shutdown } from './eventBus'
 
 export { toPlainObject } from './utils/toPlainObject'
 export { transformAxiosError } from './utils/transformAxiosError'
+export { stripAnsi } from './utils/ansiRegex'

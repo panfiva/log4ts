@@ -9,3 +9,10 @@ export function ansiRegex({ onlyFirst = false } = {}) {
 
   return new RegExp(pattern, onlyFirst ? undefined : 'g')
 }
+
+export function stripAnsi(val: any) {
+  if (typeof val !== 'string') {
+    return val
+  }
+  return val.replace(ansiRegex(), '')
+}
