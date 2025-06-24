@@ -22,17 +22,6 @@ import { asString } from 'date-format'
 
 const newNow = () => new Date()
 
-const deleteFiles = (fileNames: string[]) => {
-  debug(`deleteFiles: files to delete: ${fileNames}`)
-  return Promise.all(
-    fileNames.map((f) =>
-      fs.unlink(f).catch((e) => {
-        debug(`deleteFiles: error when unlinking ${f}, ignoring. Error was ${e}`)
-      })
-    )
-  )
-}
-
 type RollingFileWriteStreamConfigs = PartialBy<Required<RollingFileWriteStreamOptions>, 'pattern'>
 
 /**
