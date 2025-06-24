@@ -1,5 +1,6 @@
 export { LogWriter, ShutdownCb } from './logWriter'
 export { FileLogWriter, FileLogWriterConfig } from './logWriters/fileLogWriter'
+export { FileLogWriterSync, FileLogWriterSyncConfig } from './logWriters/fileLogWriterSync'
 export { ConsoleLogWriter } from './logWriters/consoleLogWriter'
 export { MultiFileLogWriter, MultiFileLogWriterOptions } from './logWriters/multiFileLogWriter'
 export {

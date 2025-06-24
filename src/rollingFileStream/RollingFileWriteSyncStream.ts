@@ -1,17 +1,16 @@
 import debugLib from 'debug'
-const debug = debugLib('log4ts:RollingFileWriteStream')
+const debug = debugLib('log4ts:RollingFileWriteSyncStream')
 
 import * as fs from 'fs-extra'
 import * as path from 'path'
 import * as os from 'os'
-import { Writable } from 'stream'
 
 import { fileNameFormatterFactory } from './fileNameFormatter'
 import { fileNameParserFactory } from './fileNameParser'
 
 import type {
   FileNameFormatterFn,
-  RollingFileWriteStreamOptions,
+  RollingFileSyncWriteStreamOptions,
   FileNameParserFn,
   ParsedFilename,
 } from './types'
@@ -20,15 +19,18 @@ import { asString } from 'date-format'
 
 const newNow = () => new Date()
 
-type RollingFileWriteStreamConfigs = Omit<Required<RollingFileWriteStreamOptions>, 'pattern'> & {
+type RollingFileSyncWriteStreamConfigs = Omit<
+  Required<RollingFileSyncWriteStreamOptions>,
+  'pattern'
+> & {
   pattern?: string
 }
 
 /**
- * RollingFileWriteStream is mainly used when writing to a file rolling by date or size.
- * RollingFileWriteStream inherits from stream.Writable
+ * RollingFileWriteSyncStream is mainly used when writing to a file rolling by date or size.
+ * RollingFileWriteSyncStream inherits from stream.Writable
  */
-export class RollingFileWriteStream extends Writable {
+export class RollingFileWriteSyncStream {
   currentFileStream: fs.WriteStream = undefined as any
 
   fileNameFormatter: FileNameFormatterFn
@@ -49,17 +51,15 @@ export class RollingFileWriteStream extends Writable {
     currentSize: number
   }
 
-  options: RollingFileWriteStreamConfigs
+  options: RollingFileSyncWriteStreamConfigs
 
-  constructor(filePath: string, options: RollingFileWriteStreamOptions) {
-    debug(`constructor: creating RollingFileWriteStream. path=${filePath}`)
+  constructor(filePath: string, options: RollingFileSyncWriteStreamOptions) {
+    debug(`constructor: creating RollingFileWriteSyncStream. path=${filePath}`)
     if (typeof filePath !== 'string' || filePath.length === 0) {
       throw new Error(`Invalid filename: ${filePath}`)
     } else if (filePath.endsWith(path.sep)) {
       throw new Error(`Filename is a directory: ${filePath}`)
     }
-
-    super()
 
     // handle ~ expansion: https://github.com/nodejs/node/issues/684
     // exclude ~ and ~filename as these can be valid files
@@ -75,7 +75,7 @@ export class RollingFileWriteStream extends Writable {
     }
     this.fileNameFormatter = fileNameFormatterFactory({
       file: this.fileObject,
-      alwaysIncludeDate: !!options.pattern,
+      alwaysIncludeDate: !!this.options.pattern,
       needsIndex: this.options.maxSize < Number.MAX_SAFE_INTEGER,
       keepFileExt: this.options.keepFileExt,
       fileNameSep: this.options.fileNameSep,
@@ -109,10 +109,12 @@ export class RollingFileWriteStream extends Writable {
 
     this.mkdirSync(this.fileObject.dir)
 
-    this._renewWriteStream()
+    this._touchFile()
+
+    this._shouldRoll()
   }
 
-  _setExistingSizeAndDate() {
+  _setExistingSizeAndDate(): void {
     try {
       const stats = fs.statSync(this.filename)
       this.state.currentSize = stats.size
@@ -125,8 +127,10 @@ export class RollingFileWriteStream extends Writable {
     }
   }
 
-  private _parseOption(rawOptions: RollingFileWriteStreamOptions): RollingFileWriteStreamConfigs {
-    const defaultOptions: RollingFileWriteStreamConfigs = {
+  private _parseOption(
+    rawOptions: RollingFileSyncWriteStreamOptions
+  ): RollingFileSyncWriteStreamConfigs {
+    const defaultOptions: RollingFileSyncWriteStreamConfigs = {
       maxSize: 0,
       backups: 4,
       encoding: 'utf-8',
@@ -139,12 +143,12 @@ export class RollingFileWriteStream extends Writable {
 
     const { pattern, ...rest } = rawOptions
 
-    const opt: Partial<RollingFileWriteStreamConfigs> = {
+    const opt: Partial<RollingFileSyncWriteStreamConfigs> = {
       ...rest,
       pattern: rawOptions.pattern === true ? 'yyyyMMdd' : rawOptions.pattern,
     }
 
-    const options: RollingFileWriteStreamConfigs = Object.assign({}, defaultOptions, opt)
+    const options: RollingFileSyncWriteStreamConfigs = Object.assign({}, defaultOptions, opt)
 
     if (options.pattern) {
       if (options.maxSize)
@@ -158,47 +162,27 @@ export class RollingFileWriteStream extends Writable {
     if (options.backups < 0) {
       throw new Error(`options.backups (${options.backups}) should be >= 0`)
     }
-    debug(`_parseOption: creating stream with option=${JSON.stringify(options)}`)
+    debug(`creating stream with option=${JSON.stringify(options)}`)
     return options
   }
 
-  /** overwrite Stream._final */
-  _final(callback: (error?: Error | null) => void): void {
-    this.currentFileStream.end('', this.options.encoding, callback)
+  /** overwrite Stream._write */
+  write(chunk: any, encoding: BufferEncoding): void {
+    this._shouldRoll()
+
+    this.state.currentSize += chunk.length
+    fs.appendFileSync(this.filename, chunk, { encoding: encoding })
   }
 
-  /**
-   * overwrite Stream._write
-   * stream._write functions is executed sequentially (not concurrently)
-   * after callback is executed
-   */
-  _write(chunk: any, encoding: BufferEncoding, callback: (error?: Error | null) => void): void {
-    this._shouldRoll().then(() => {
-      debug(
-        `_write: writing chunk. ` +
-          `file=${this.currentFileStream.path} ` +
-          `state=${JSON.stringify(this.state)} ` +
-          `chunk=${chunk}`
-      )
-      this.currentFileStream.write(chunk, encoding, (e) => {
-        this.state.currentSize += chunk.length
-        callback(e)
-      })
-    })
-  }
-
-  private async _shouldRoll() {
+  private _shouldRoll(): void {
     if (this._dateChanged() || this._tooBig()) {
-      debug(
-        `_shouldRoll: rolling because dateChanged? ${this._dateChanged()} or tooBig? ${this._tooBig()}`
-      )
-      await this._roll()
+      debug(`rolling because dateChanged? ${this._dateChanged()} or tooBig? ${this._tooBig()}`)
+      this._roll()
     }
   }
 
   private _dateChanged() {
     if (!this.state.currentDate || !this.options.pattern) return false
-
     return (
       this.state.currentDate && this.state.currentDate !== asString(this.options.pattern, newNow())
     )
@@ -209,16 +193,7 @@ export class RollingFileWriteStream extends Writable {
   }
 
   private _roll() {
-    debug(`_roll: closing the current stream`)
-    return new Promise((resolve, reject) => {
-      this.currentFileStream.end('', this.options.encoding, () => {
-        this._moveOldFiles().then(resolve).catch(reject)
-      })
-    })
-  }
-
-  private async _moveOldFiles() {
-    const files = await this._getExistingFiles()
+    const files = this._getExistingFiles()
     const todaysFiles = this.state.currentDate
       ? files.filter((f) => f.date === this.state.currentDate)
       : files
@@ -238,7 +213,7 @@ export class RollingFileWriteStream extends Writable {
       // if that's the case, we will delete all remaining log files as they are not re
       if (sourceIndex > i) {
         debug(`deleteing out of sequence log file '${sourceName}'`)
-        await fs.unlink(sourceFilePath)
+        fs.unlinkSync(sourceFilePath)
         continue
       }
 
@@ -248,7 +223,7 @@ export class RollingFileWriteStream extends Writable {
       })
 
       try {
-        await fs.unlink(targetFilePath)
+        fs.unlinkSync(targetFilePath)
       } catch (e: any) {
         // ignore err: if we could not delete, it's most likely that it doesn't exist
         if (e.code !== 'ENOENT') {
@@ -256,22 +231,22 @@ export class RollingFileWriteStream extends Writable {
         }
       }
 
-      // current log file
+      // truncate current file if the it is the first file and no backups are needed
       if (i === 0) {
-        if (this.options.backups === 0) await fs.truncate(sourceFilePath, 0)
-        else await fs.rename(sourceFilePath, targetFilePath)
+        if (this.options.backups === 0) fs.truncateSync(sourceFilePath, 0)
+        else fs.renameSync(sourceFilePath, targetFilePath)
       }
-      // unlimited backups = rename current file
+      // unlimited backups
       else if (this.options.backups === undefined) {
-        await fs.rename(sourceFilePath, targetFilePath)
+        fs.renameSync(sourceFilePath, targetFilePath)
       }
       // backup slot is available
       else if (this.options.backups > i) {
-        await fs.rename(sourceFilePath, targetFilePath)
+        fs.renameSync(sourceFilePath, targetFilePath)
       }
       // no backup slot is available
       else {
-        await fs.unlink(sourceFilePath)
+        fs.unlinkSync(sourceFilePath)
       }
     }
 
@@ -280,23 +255,23 @@ export class RollingFileWriteStream extends Writable {
       this.state.currentDate && this.options.pattern
         ? asString(this.options.pattern, newNow())
         : undefined
-    debug(`_moveOldFiles: finished rolling files. state=${JSON.stringify(this.state)}`)
-    this._renewWriteStream()
+    debug(`finished rolling files. state=${JSON.stringify(this.state)}`)
+    this._touchFile()
+    return
   }
 
   // Sorted from the oldest to the latest
-  private async _getExistingFiles() {
-    const files = await fs
-      .readdir(this.fileObject.dir)
-      .catch(/* istanbul ignore next: will not happen on windows */ () => [])
+  private _getExistingFiles() {
+    const files = fs.readdirSync(this.fileObject.dir)
 
-    debug(`_getExistingFiles: files=${files}`)
+    debug(`files=${files}`)
     const existingFileDetails = files.map((n) => this.fileNameParser(n)).filter((n) => !!n)
 
     // if timestamp exists, use timestamp; otherwise use negative index so that higher index is treated as older file
     const getKey = (n: ParsedFilename) => n.timestamp ?? -n.index
     existingFileDetails.sort((a, b) => getKey(a) - getKey(b))
 
+    debug(`sorted files=${existingFileDetails}`)
     return existingFileDetails
   }
 
@@ -324,7 +299,7 @@ export class RollingFileWriteStream extends Writable {
     }
   }
 
-  private _renewWriteStream() {
+  private _touchFile() {
     const filePath = this.fileNameFormatter({
       date: this.state.currentDate,
       index: 0,
@@ -342,9 +317,5 @@ export class RollingFileWriteStream extends Writable {
 
     // try to throw EISDIR, EROFS, EACCES
     fs.appendFileSync(filePath, '', { encoding, flag, mode })
-    this.currentFileStream = fs.createWriteStream(filePath, ops)
-    this.currentFileStream.on('error', (e) => {
-      this.emit('error', e)
-    })
   }
 }

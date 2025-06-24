@@ -5,9 +5,10 @@ export type FileNameFormatterOptions = {
   keepFileExt: boolean
   needsIndex: boolean
   alwaysIncludeDate: boolean
-  compress: boolean
   fileNameSep?: string
 }
+
+export type FileSyncNameFormatterOptions = FileNameFormatterOptions
 
 export type FileNameParserOptions = {
   file: path.ParsedPath
@@ -24,8 +25,15 @@ type FormattersInput = {
 export type ParsedFilename = {
   filename: string
   index: number
-  isCompressed: boolean
+  /**
+   * file date extracted from file name;
+   * only populated for date files
+   */
   date?: string
+  /**
+   * current time
+   * only populated for date files
+   */
   timestamp?: number
 }
 
@@ -39,12 +47,15 @@ export type FileNameParserFn = (f: string, p?: ParsedFilename) => ParsedFilename
 export type RollingFileWriteStreamOptions = {
   /**
    * The maximum number of files to keep.
+   * If undefined, keep all
    */
   backups?: number
   /**
    * The maximum size one file can reach, in bytes.
    * This should be more than 1024. The default is 0.
    * If not specified or 0, then no log rolling will happen.
+   *
+   * Not applicable for date pattern
    */
   maxSize?: number
   /**
@@ -58,25 +69,21 @@ export type RollingFileWriteStreamOptions = {
    */
   flags?: string
   /**
-   * Whether to compress backup files.
-   */
-  compress?: boolean
-  /**
    * Whether to keep the file extension.
    */
   keepFileExt?: boolean
   /**
    * The date string pattern in the file name.
    * Example: `yyyy-MM-ddThh:mm:ss.SS`
+   *
+   * If `true`, defaults to `yyyyMMdd`
    */
-  pattern?: string
-  /**
-   * Whether to add date to the name of the first file.
-   */
-  alwaysIncludePattern?: boolean
+  pattern?: string | true
 
   encoding?: BufferEncoding
 
   /** File name separator */
   fileNameSep?: string
 }
+
+export type RollingFileSyncWriteStreamOptions = RollingFileWriteStreamOptions

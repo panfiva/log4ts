@@ -1,11 +1,9 @@
 import { LogWriter, ShutdownCb } from '../logWriter'
 
-import { RollingFileWriteStream } from '../rollingFileStream/RollingFileWriteStream'
+import { RollingFileWriteSyncStream } from '../rollingFileStream/RollingFileWriteSyncStream'
 import { ansiRegex } from '../utils/ansiRegex'
 import * as path from 'path'
 import * as os from 'os'
-
-import { getEventBus } from '../eventBus'
 
 import debugLib from 'debug'
 const debug = debugLib('log4ts:logWriter:file')
@@ -13,7 +11,7 @@ const debug = debugLib('log4ts:logWriter:file')
 const eol = os.EOL
 
 let mainSighupListenerStarted = false
-const sighupListeners = new Set<FileLogWriter>()
+const sighupListeners = new Set<FileLogWriterSync>()
 
 function mainSighupHandler() {
   sighupListeners.forEach((logWriter) => {
@@ -21,7 +19,7 @@ function mainSighupHandler() {
   })
 }
 
-export type FileLogWriterConfig = {
+export type FileLogWriterSyncConfig = {
   filename: string
   maxLogSize?: number
   backups?: number
@@ -34,11 +32,11 @@ export type FileLogWriterConfig = {
 /** data accepted by logWriter */
 type FileLogWriterData = string
 
-export class FileLogWriter extends LogWriter<FileLogWriterData, FileLogWriterConfig> {
-  config: Required<FileLogWriterConfig>
-  private writer: RollingFileWriteStream
+export class FileLogWriterSync extends LogWriter<FileLogWriterData, FileLogWriterSyncConfig> {
+  config: Required<FileLogWriterSyncConfig>
+  private writer: RollingFileWriteSyncStream
 
-  constructor(name: string, config: FileLogWriterConfig) {
+  constructor(name: string, config: FileLogWriterSyncConfig) {
     super(name)
 
     if (typeof config.filename !== 'string' || config.filename.length === 0) {
@@ -74,69 +72,28 @@ export class FileLogWriter extends LogWriter<FileLogWriterData, FileLogWriterCon
 
   private openStream() {
     // const stream = new streams.RollingFileStream(filePath, fileSize, numFiles, opt)
-    const stream = new RollingFileWriteStream(this.config.filename, {
+    const stream = new RollingFileWriteSyncStream(this.config.filename, {
       maxSize: this.config.maxLogSize,
       backups: this.config.backups,
       encoding: this.config.encoding,
       mode: this.config.mode,
     })
 
-    stream.on('error', (err: Error) => {
-      console.error(
-        'log4ts.fileLogWriter - Writing to file %s, error happened ',
-        this.config.filename,
-        err
-      )
-    })
-
-    stream.on('drain', () => {
-      const eventBus = getEventBus()
-      eventBus.emit('log4ts:pause', {
-        pause: false,
-        className: this.constructor.name,
-        logWriterName: this.name,
-      })
-    })
-
-    const eventBus = getEventBus()
-    eventBus.emit('log4ts:pause', {
-      pause: false,
-      className: this.constructor.name,
-      logWriterName: this.name,
-    })
-
     return stream
   }
 
   protected _write = (data: FileLogWriterData): void => {
-    if (!this.writer.writable) {
-      return
-    }
     if (this.config.removeColor === true) {
       // eslint-disable-next-line no-param-reassign
       data = data.replace(ansiRegex(), '')
     }
 
-    if (!this.writer.write(data + eol, 'utf-8')) {
-      //  writer returns `false` when stream needs to wait for the `'drain'` event to be emitted
-      const eventBus = getEventBus()
-      eventBus.emit('log4ts:pause', {
-        pause: true,
-        className: this.constructor.name,
-        logWriterName: this.name,
-      })
-    }
-  }
-
-  reopen() {
-    this.writer.end(() => {
-      this.writer = this.openStream()
-    })
+    this.writer.write(data + eol, 'utf-8')
   }
 
   sighupHandler() {
     debug('SIGHUP handler called.')
-    this.reopen()
+    this.writer = this.openStream()
   }
 
   protected _shutdown = (cb?: ShutdownCb) => {
@@ -145,6 +102,6 @@ export class FileLogWriter extends LogWriter<FileLogWriterData, FileLogWriterCon
       process.removeListener('SIGHUP', mainSighupHandler)
       mainSighupListenerStarted = false
     }
-    this.writer.end('', 'utf-8', cb)
+    if (cb) cb()
   }
 }

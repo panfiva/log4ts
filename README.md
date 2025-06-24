@@ -91,6 +91,10 @@ All examples are configured with process signal listeners to demonstrate event h
   - Create 2 classes that accept different data format to be
     forwarded to a shared event writer
 
+- [Sync File Log Writer](./src/examples/fileSync.ts)
+
+  - Writing to a rolling file synchronously
+
 ## Shutdown
 
 Logging environment should execute `log4ts.shutdown(cb)` function before process exit.

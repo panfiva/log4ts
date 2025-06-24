@@ -4,13 +4,12 @@ const debug = debugLib('log4ts:fileNameFormatter')
 import path from 'path'
 import type { FileNameFormatterOptions, FileNameFormatterFn } from './types'
 
-const ZIP_EXT = '.gz'
 const DEFAULT_FILENAME_SEP = '.'
 
 type FormatterPart = (filename: string, index: number, date: string | undefined) => string
 
 export const fileNameFormatterFactory = (props: FileNameFormatterOptions): FileNameFormatterFn => {
-  const { file, keepFileExt, needsIndex, alwaysIncludeDate, compress, fileNameSep } = props
+  const { file, keepFileExt, needsIndex, alwaysIncludeDate, fileNameSep } = props
   const FILENAME_SEP = fileNameSep || DEFAULT_FILENAME_SEP
   const dirAndName = path.join(file.dir, file.name)
 
@@ -28,12 +27,7 @@ export const fileNameFormatterFactory = (props: FileNameFormatterOptions): FileN
     return ret
   }
 
-  const gzip: FormatterPart = (f, i) => {
-    const ret = i && compress ? f + ZIP_EXT : f
-    return ret
-  }
-
-  const parts: FormatterPart[] = keepFileExt ? [date, index, ext, gzip] : [ext, date, index, gzip]
+  const parts: FormatterPart[] = keepFileExt ? [date, index, ext] : [ext, date, index]
 
   const fn: FileNameFormatterFn = (props) => {
     const { date, index } = props

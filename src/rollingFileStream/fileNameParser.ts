@@ -3,7 +3,6 @@ const debug = debugLib('log4ts:fileNameParser')
 
 import { asString, parse } from 'date-format'
 
-const ZIP_EXT = '.gz'
 const DEFAULT_FILENAME_SEP = '.'
 const __NOT_MATCHING__ = '__NOT_MATCHING__'
 
@@ -25,16 +24,6 @@ export const fileNameParserFactory = (props: FileNameParserOptions): FileNamePar
 
   // All these functions take two arguments: f, the filename, and p, the result placeholder
   // They return the filename with any matching parts removed.
-  // The "zip" function, for instance, removes the ".gz" part of the filename (if present)
-  const zip: FileNameParserHelper = (f, p) => {
-    if (f.endsWith(ZIP_EXT)) {
-      debug('it is gzipped')
-      // eslint-disable-next-line no-param-reassign
-      p.isCompressed = true
-      return f.slice(0, -1 * ZIP_EXT.length)
-    }
-    return f
-  }
 
   const extAtEnd: FileNameParserHelper = (f, _p): string => {
     if (f.startsWith(file.name) && f.endsWith(file.ext)) {
@@ -106,7 +95,6 @@ export const fileNameParserFactory = (props: FileNameParserOptions): FileNamePar
   }
 
   const parts: FileNameParserHelper[] = [
-    zip,
     keepFileExt ? extAtEnd : extInMiddle,
     pattern ? dateAndIndex : index,
   ]
@@ -115,7 +103,6 @@ export const fileNameParserFactory = (props: FileNameParserOptions): FileNamePar
     const result: ParsedFilename = {
       filename,
       index: 0,
-      isCompressed: false,
     }
     // pass the filename through each of the file part parsers
     const whatsLeftOver = parts.reduce((remains, part) => part(remains, result), filename)
