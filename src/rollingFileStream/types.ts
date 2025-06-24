@@ -25,7 +25,6 @@ type FormattersInput = {
 export type ParsedFilename = {
   filename: string
   index: number
-  isCompressed: boolean
   /**
    * file date extracted from file name;
    * only populated for date files
