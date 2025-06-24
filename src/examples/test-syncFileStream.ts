@@ -1,6 +1,6 @@
 /*
 export DEBUG=log4ts:RollingFileWriteSyncStream
-yarn run build && node ./dist/examples/syncFileStream.js
+yarn run build && node ./dist/examples/test-syncFileStream.js
 */
 
 import { RollingFileWriteSyncStream } from '../rollingFileStream/RollingFileWriteSyncStream'

@@ -8,7 +8,6 @@ import { Writable } from 'stream'
 
 import { fileNameFormatterFactory } from './fileNameFormatter'
 import { fileNameParserFactory } from './fileNameParser'
-import { moveAndMaybeCompressFile } from './moveFile'
 
 import type {
   FileNameFormatterFn,
@@ -89,7 +88,6 @@ export class RollingFileWriteStream extends Writable {
       file: this.fileObject,
       alwaysIncludeDate: this.options.alwaysIncludePattern,
       needsIndex: this.options.maxSize < Number.MAX_SAFE_INTEGER,
-      compress: this.options.compress,
       keepFileExt: this.options.keepFileExt,
       fileNameSep: this.options.fileNameSep,
     })
@@ -119,6 +117,9 @@ export class RollingFileWriteStream extends Writable {
     }
 
     debug(`constructor: create new file ${this.filename}, state=${JSON.stringify(this.state)}`)
+
+    this.mkdirSync(this.fileObject.dir)
+
     this._renewWriteStream()
   }
 
@@ -142,7 +143,6 @@ export class RollingFileWriteStream extends Writable {
       encoding: 'utf-8',
       mode: parseInt('0600', 8), // 0o600 in octal
       flags: 'a',
-      compress: false,
       keepFileExt: false,
       alwaysIncludePattern: false,
       fileNameSep: '.',
@@ -166,7 +166,11 @@ export class RollingFileWriteStream extends Writable {
     this.currentFileStream.end('', this.options.encoding, callback)
   }
 
-  /** overwrite Stream._write */
+  /**
+   * overwrite Stream._write
+   * stream._write functions is executed sequentially (not concurrently)
+   * after callback is executed
+   */
   _write(chunk: any, encoding: BufferEncoding, callback: (error?: Error | null) => void): void {
     this._shouldRoll().then(() => {
       debug(
@@ -216,22 +220,57 @@ export class RollingFileWriteStream extends Writable {
     const todaysFiles = this.state.currentDate
       ? files.filter((f) => f.date === this.state.currentDate)
       : files
-    for (let i = todaysFiles.length; i >= 0; i--) {
-      debug(`_moveOldFiles: i = ${i}`)
+
+    for (let i = todaysFiles.length - 1; i >= 0; i--) {
+      const { filename: sourceName, index: sourceIndex } = todaysFiles[todaysFiles.length - i - 1]
+
+      debug(`analyzing log file: #${i} (${sourceName})`)
+
       const sourceFilePath = this.fileNameFormatter({
         date: this.state.currentDate,
-        index: i,
+        index: sourceIndex,
       })
+
+      // we might already have files in the directory that are out of sequence
+      // for example, we might have log.txt and log.txt.2, skipping log.txt.1
+      // if that's the case, we will delete all remaining log files as they are not re
+      if (sourceIndex > i) {
+        debug(`deleteing out of sequence log file '${sourceName}'`)
+        await fs.unlink(sourceFilePath)
+        continue
+      }
+
       const targetFilePath = this.fileNameFormatter({
         date: this.state.currentDate,
         index: i + 1,
       })
 
-      const moveAndCompressOptions = {
-        compress: this.options.compress && i === 0,
-        mode: this.options.mode,
+      try {
+        await fs.unlink(targetFilePath)
+      } catch (e: any) {
+        // ignore err: if we could not delete, it's most likely that it doesn't exist
+        if (e.code !== 'ENOENT') {
+          throw e
+        }
       }
-      await moveAndMaybeCompressFile(sourceFilePath, targetFilePath, moveAndCompressOptions)
+
+      // current log file
+      if (i === 0) {
+        if (this.options.backups === 0) await fs.truncate(sourceFilePath, 0)
+        else await fs.rename(sourceFilePath, targetFilePath)
+      }
+      // unlimited backups = rename current file
+      else if (this.options.backups === undefined) {
+        await fs.rename(sourceFilePath, targetFilePath)
+      }
+      // backup slot is available
+      else if (this.options.backups > i) {
+        await fs.rename(sourceFilePath, targetFilePath)
+      }
+      // no backup slot is available
+      else {
+        await fs.unlink(sourceFilePath)
+      }
     }
 
     this.state.currentSize = 0
@@ -241,13 +280,6 @@ export class RollingFileWriteStream extends Writable {
         : undefined
     debug(`_moveOldFiles: finished rolling files. state=${JSON.stringify(this.state)}`)
     this._renewWriteStream()
-    // wait for the file to be open before cleaning up old ones,
-    // otherwise the daysToKeep calculations can be off
-    await new Promise((resolve, reject) => {
-      this.currentFileStream.write('', this.options.encoding, () => {
-        this._clean().then(resolve).catch(reject)
-      })
-    })
   }
 
   // Sorted from the oldest to the latest
@@ -259,10 +291,35 @@ export class RollingFileWriteStream extends Writable {
     debug(`_getExistingFiles: files=${files}`)
     const existingFileDetails = files.map((n) => this.fileNameParser(n)).filter((n) => !!n)
 
-    const getKey = (n: ParsedFilename) => (n.timestamp ? n.timestamp : newNow().getTime()) - n.index
+    // if timestamp exists, use timestamp; otherwise use negative index so that higher index is treated as older file
+    const getKey = (n: ParsedFilename) => n.timestamp ?? -n.index
     existingFileDetails.sort((a, b) => getKey(a) - getKey(b))
 
     return existingFileDetails
+  }
+
+  private mkdirSync(dir: string) {
+    try {
+      return fs.mkdirSync(dir, { recursive: true })
+    } catch (e: any) {
+      // throw error for all except EEXIST and EROFS (read-only filesystem)
+      if (e.code !== 'EEXIST' && e.code !== 'EROFS') {
+        throw e
+      }
+
+      // EEXIST: throw if file and not directory
+      // EROFS : throw if directory not found
+      else {
+        try {
+          if (fs.statSync(dir).isDirectory()) {
+            return dir
+          }
+          throw e
+        } catch (err) {
+          throw e
+        }
+      }
+    }
   }
 
   private _renewWriteStream() {
@@ -270,39 +327,6 @@ export class RollingFileWriteStream extends Writable {
       date: this.state.currentDate,
       index: 0,
     })
-
-    // attempt to create the directory
-    const mkdir = (dir: string) => {
-      try {
-        return fs.mkdirSync(dir, { recursive: true })
-      } catch (e: any) {
-        // backward-compatible fs.mkdirSync for nodejs pre-10.12.0 (without recursive option)
-        // recursive creation of parent first
-        if (e.code === 'ENOENT') {
-          mkdir(path.dirname(dir))
-          return mkdir(dir)
-        }
-
-        // throw error for all except EEXIST and EROFS (read-only filesystem)
-        if (e.code !== 'EEXIST' && e.code !== 'EROFS') {
-          throw e
-        }
-
-        // EEXIST: throw if file and not directory
-        // EROFS : throw if directory not found
-        else {
-          try {
-            if (fs.statSync(dir).isDirectory()) {
-              return dir
-            }
-            throw e
-          } catch (err) {
-            throw e
-          }
-        }
-      }
-    }
-    mkdir(this.fileObject.dir)
 
     const ops = {
       // see https://nodejs.org/api/fs.html#file-system-flags
@@ -320,24 +344,5 @@ export class RollingFileWriteStream extends Writable {
     this.currentFileStream.on('error', (e) => {
       this.emit('error', e)
     })
-  }
-
-  private async _clean() {
-    const existingFileDetails = await this._getExistingFiles()
-    debug(
-      `_clean: backups = ${this.options.backups}, existingFiles = ${existingFileDetails.length}`
-    )
-    debug('_clean: existing files are: ', existingFileDetails)
-    if (this._tooManyFiles(existingFileDetails.length)) {
-      const fileNamesToRemove = existingFileDetails
-        .slice(0, existingFileDetails.length - this.options.backups - 1)
-        .map((f) => path.format({ dir: this.fileObject.dir, base: f.filename }))
-
-      await deleteFiles(fileNamesToRemove)
-    }
-  }
-
-  _tooManyFiles(numFiles: number) {
-    return this.options.backups >= 0 && numFiles > this.options.backups + 1
   }
 }

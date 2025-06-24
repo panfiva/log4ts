@@ -5,11 +5,10 @@ export type FileNameFormatterOptions = {
   keepFileExt: boolean
   needsIndex: boolean
   alwaysIncludeDate: boolean
-  compress: boolean
   fileNameSep?: string
 }
 
-export type FileSyncNameFormatterOptions = Omit<FileNameFormatterOptions, 'compress'>
+export type FileSyncNameFormatterOptions = FileNameFormatterOptions
 
 export type FileNameParserOptions = {
   file: path.ParsedPath
@@ -69,10 +68,6 @@ export type RollingFileWriteStreamOptions = {
    */
   flags?: string
   /**
-   * Whether to compress backup files.
-   */
-  compress?: boolean
-  /**
    * Whether to keep the file extension.
    */
   keepFileExt?: boolean
@@ -92,4 +87,4 @@ export type RollingFileWriteStreamOptions = {
   fileNameSep?: string
 }
 
-export type RollingFileSyncWriteStreamOptions = Omit<RollingFileWriteStreamOptions, 'compress'>
+export type RollingFileSyncWriteStreamOptions = RollingFileWriteStreamOptions

@@ -77,7 +77,6 @@ export class RollingFileWriteSyncStream {
       file: this.fileObject,
       alwaysIncludeDate: this.options.alwaysIncludePattern,
       needsIndex: this.options.maxSize < Number.MAX_SAFE_INTEGER,
-      compress: false,
       keepFileExt: this.options.keepFileExt,
       fileNameSep: this.options.fileNameSep,
     })
@@ -107,6 +106,9 @@ export class RollingFileWriteSyncStream {
     }
 
     debug(`constructor: create new file ${this.filename}, state=${JSON.stringify(this.state)}`)
+
+    this.mkdirSync(this.fileObject.dir)
+
     this._touchFile()
 
     this._shouldRoll()
@@ -179,8 +181,6 @@ export class RollingFileWriteSyncStream {
   }
 
   private _roll() {
-    debug(`closing the current stream`)
-
     const files = this._getExistingFiles()
     const todaysFiles = this.state.currentDate
       ? files.filter((f) => f.date === this.state.currentDate)
@@ -196,6 +196,9 @@ export class RollingFileWriteSyncStream {
         index: sourceIndex,
       })
 
+      // we might already have files in the directory that are out of sequence
+      // for example, we might have log.txt and log.txt.2, skipping log.txt.1
+      // if that's the case, we will delete all remaining log files as they are not re
       if (sourceIndex > i) {
         debug(`deleteing out of sequence log file '${sourceName}'`)
         fs.unlinkSync(sourceFilePath)
@@ -207,30 +210,30 @@ export class RollingFileWriteSyncStream {
         index: i + 1,
       })
 
-      // we might already have files in the directory that are out of sequence
-      // for example, we might have log.txt and log.txt.2, skipping log.txt.1
-      // if that's the case, we will delete all remaining log files as they are not re
-
-      // on windows, you can get a EEXIST error if you rename a file to an existing file
-      // so, we'll try to delete the file we're renaming to first
       try {
         fs.unlinkSync(targetFilePath)
-      } catch (e) {
+      } catch (e: any) {
         // ignore err: if we could not delete, it's most likely that it doesn't exist
+        if (e.code !== 'ENOENT') {
+          throw e
+        }
       }
 
       // truncate current file if the it is the first file and no backups are needed
-      if (this.options.backups === 0 && i === 0) {
-        fs.truncateSync(sourceFilePath, 0)
+      if (i === 0) {
+        if (this.options.backups === 0) fs.truncateSync(sourceFilePath, 0)
+        else fs.renameSync(sourceFilePath, targetFilePath)
       }
-      // unlimited backups = rename current file
+      // unlimited backups
       else if (this.options.backups === undefined) {
         fs.renameSync(sourceFilePath, targetFilePath)
       }
-      //
+      // backup slot is available
       else if (this.options.backups > i) {
         fs.renameSync(sourceFilePath, targetFilePath)
-      } else if (this.options.backups <= i && i > 0) {
+      }
+      // no backup slot is available
+      else {
         fs.unlinkSync(sourceFilePath)
       }
     }
@@ -260,44 +263,35 @@ export class RollingFileWriteSyncStream {
     return existingFileDetails
   }
 
+  private mkdirSync(dir: string) {
+    try {
+      return fs.mkdirSync(dir, { recursive: true })
+    } catch (e: any) {
+      // throw error for all except EEXIST and EROFS (read-only filesystem)
+      if (e.code !== 'EEXIST' && e.code !== 'EROFS') {
+        throw e
+      }
+
+      // EEXIST: throw if file and not directory
+      // EROFS : throw if directory not found
+      else {
+        try {
+          if (fs.statSync(dir).isDirectory()) {
+            return dir
+          }
+          throw e
+        } catch (err) {
+          throw e
+        }
+      }
+    }
+  }
+
   private _touchFile() {
     const filePath = this.fileNameFormatter({
       date: this.state.currentDate,
       index: 0,
     })
-
-    // attempt to create the directory
-    const mkdir = (dir: string) => {
-      try {
-        return fs.mkdirSync(dir, { recursive: true })
-      } catch (e: any) {
-        // backward-compatible fs.mkdirSync for nodejs pre-10.12.0 (without recursive option)
-        // recursive creation of parent first
-        if (e.code === 'ENOENT') {
-          mkdir(path.dirname(dir))
-          return mkdir(dir)
-        }
-
-        // throw error for all except EEXIST and EROFS (read-only filesystem)
-        if (e.code !== 'EEXIST' && e.code !== 'EROFS') {
-          throw e
-        }
-
-        // EEXIST: throw if file and not directory
-        // EROFS : throw if directory not found
-        else {
-          try {
-            if (fs.statSync(dir).isDirectory()) {
-              return dir
-            }
-            throw e
-          } catch (err) {
-            throw e
-          }
-        }
-      }
-    }
-    mkdir(this.fileObject.dir)
 
     const ops = {
       // see https://nodejs.org/api/fs.html#file-system-flags
