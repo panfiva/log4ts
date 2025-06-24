@@ -15,16 +15,16 @@ import type {
   ParsedFilename,
 } from './types'
 
-import type { PartialBy } from '../types'
-
 import { asString } from 'date-format'
 
 const newNow = () => new Date()
 
-type RollingFileSyncWriteStreamConfigs = PartialBy<
+type RollingFileSyncWriteStreamConfigs = Omit<
   Required<RollingFileSyncWriteStreamOptions>,
   'pattern'
->
+> & {
+  pattern?: string
+}
 
 /**
  * RollingFileWriteSyncStream is mainly used when writing to a file rolling by date or size.
@@ -75,7 +75,7 @@ export class RollingFileWriteSyncStream {
     }
     this.fileNameFormatter = fileNameFormatterFactory({
       file: this.fileObject,
-      alwaysIncludeDate: this.options.alwaysIncludePattern,
+      alwaysIncludeDate: !!this.options.pattern,
       needsIndex: this.options.maxSize < Number.MAX_SAFE_INTEGER,
       keepFileExt: this.options.keepFileExt,
       fileNameSep: this.options.fileNameSep,
@@ -137,11 +137,23 @@ export class RollingFileWriteSyncStream {
       mode: parseInt('0600', 8), // 0o600 in octal
       flags: 'a',
       keepFileExt: false,
-      alwaysIncludePattern: false,
       fileNameSep: '.',
       pattern: undefined,
     }
-    const options = Object.assign({}, defaultOptions, rawOptions)
+
+    const { pattern, ...rest } = rawOptions
+
+    const opt: Partial<RollingFileSyncWriteStreamConfigs> = {
+      ...rest,
+      pattern: rawOptions.pattern === true ? 'yyyyMMdd' : rawOptions.pattern,
+    }
+
+    const options: RollingFileSyncWriteStreamConfigs = Object.assign({}, defaultOptions, opt)
+
+    if (options.pattern) {
+      if (options.maxSize)
+        throw new Error(`options.maxSize cannot be used when date pattern is specified`)
+    }
 
     if (options.maxSize < 0) {
       throw new Error(`options.maxSize (${options.maxSize}) should be >= 0`)
@@ -177,7 +189,7 @@ export class RollingFileWriteSyncStream {
   }
 
   private _tooBig() {
-    return this.state.currentSize >= this.options.maxSize
+    return this.options.maxSize !== 0 && this.state.currentSize >= this.options.maxSize
   }
 
   private _roll() {

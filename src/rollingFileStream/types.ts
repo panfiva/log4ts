@@ -54,6 +54,8 @@ export type RollingFileWriteStreamOptions = {
    * The maximum size one file can reach, in bytes.
    * This should be more than 1024. The default is 0.
    * If not specified or 0, then no log rolling will happen.
+   *
+   * Not applicable for date pattern
    */
   maxSize?: number
   /**
@@ -73,12 +75,10 @@ export type RollingFileWriteStreamOptions = {
   /**
    * The date string pattern in the file name.
    * Example: `yyyy-MM-ddThh:mm:ss.SS`
+   *
+   * If `true`, defaults to `yyyyMMdd`
    */
-  pattern?: string
-  /**
-   * Whether to add date to the name of the first file.
-   */
-  alwaysIncludePattern?: boolean
+  pattern?: string | true
 
   encoding?: BufferEncoding
 
