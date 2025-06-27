@@ -47,7 +47,13 @@ export function removeEmptyObject<T extends Record<string, any>>(o: T): T {
   return pickBy(o, (v) => !(isPlainObject(v) && isEmpty(v))) as T
 }
 
-export function transformAxiosError(e: AxiosError): Error {
+export function transformAxiosError(e: AxiosError): Error & AxiosErrorExport
+export function transformAxiosError(e: AxiosError, plainObject: true): AxiosErrorExport
+export function transformAxiosError(e: AxiosError, plainObject: false): Error & AxiosErrorExport
+export function transformAxiosError(
+  e: AxiosError,
+  plainObject: boolean = false
+): (Error & AxiosErrorExport) | AxiosErrorExport {
   if (!isAxiosError(e)) return e
 
   const { url, method, baseURL: baseUrl, timeout, params } = e.config! || {}
@@ -170,7 +176,9 @@ export function transformAxiosError(e: AxiosError): Error {
   ret = removeUndefined(ret)
   ret = removeEmptyObject(ret)
 
-  const err = new Error(ret.message)
+  if (plainObject) return ret
+
+  const err = new Error(ret.message) as Error & AxiosErrorExport
   Object.assign(err, ret)
 
   return err
