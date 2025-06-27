@@ -1,8 +1,14 @@
 import isArray from 'lodash/isArray'
+import isEmpty from 'lodash/isEmpty'
+import isPlainObject from 'lodash/isPlainObject'
 
 const nonEnumerablePropsToCopy = ['code', 'errno', 'syscall', 'status']
 
 type PlainObject = Record<string, any>
+
+type ErrorAttributes<T extends PlainObject> = {
+  [K in keyof T]: T[K]
+} & Record<string, any>
 
 type ToPlainObjectReturn<T> = T extends readonly any[]
   ? any[]
@@ -14,7 +20,7 @@ type ToPlainObjectReturn<T> = T extends readonly any[]
       : T extends Date
         ? Date
         : T extends object
-          ? PlainObject
+          ? ErrorAttributes<T>
           : T
 
 type RecordOrArray = PlainObject | Array<any>
@@ -27,6 +33,8 @@ export function toPlainObject<T, R = ToPlainObjectReturn<T>>(
   options?: {
     /** if set, `stack` property is removed */
     noStack?: boolean
+
+    removeEmpty?: boolean
     /**
      * custom transformation function that can be applied to all objects and class instances
      * - if returns `return.isSanitized=true`, then `return.value` is used
@@ -40,7 +48,7 @@ export function toPlainObject<T, R = ToPlainObjectReturn<T>>(
     globalCircular?: boolean
   }
 ): R {
-  const { noStack, transform, globalCircular } = options || {}
+  const { noStack, transform, globalCircular, removeEmpty } = options || {}
 
   if (
     data === null ||
@@ -70,6 +78,7 @@ export function toPlainObject<T, R = ToPlainObjectReturn<T>>(
     noStack,
     transform,
     globalCircular,
+    removeEmpty,
   })
 
   const ret = sanitizer.sanitized
@@ -86,6 +95,7 @@ type SanitizeProps = {
   current_path: string
   refs?: Map<object, string>
   noStack?: boolean
+  removeEmpty?: boolean
   /**
    * custom transformation function that can be applied to all objects and class instances
    * - if returns `return.isSanitized=true`, then `return.value` is used
@@ -109,6 +119,7 @@ class Sanitize {
   private refs: Map<object, string>
   private current_path: string
   private noStack: boolean
+  private removeEmpty: boolean
   /**
    * custom transformation function that can be applied to all objects and class instances
    * - if returns `return.isSanitized=true`, then `return.value` is used
@@ -131,6 +142,7 @@ class Sanitize {
     this.noStack = props.noStack ?? false
     this.transform = props.transform ?? (() => ({ isSanitized: false }))
     this.globalCircular = props.globalCircular ?? false
+    this.removeEmpty = props.removeEmpty ?? false
 
     this.current_path = props.current_path
 
@@ -176,7 +188,7 @@ class Sanitize {
 
   /** returns value with remove circular deps.  */
   private _removeCircularRef = (o: RecordOrArray, isRefOwner: boolean): any => {
-    const { current_path, refs, noStack, transform, globalCircular } = this
+    const { current_path, refs, noStack, transform, globalCircular, removeEmpty } = this
 
     if (o && typeof o === 'object') {
       const isAr: boolean = Array.isArray(o)
@@ -192,7 +204,7 @@ class Sanitize {
           else {
             if (val === undefined) return
             // if (Array.isArray(val) && val.length === 0) return
-            // if (val && typeof val === 'object' && isEmpty(val)) return
+            if (this.removeEmpty && val && typeof val === 'object' && isEmpty(val)) return
             ret[key as K] = val
           }
         }
@@ -231,6 +243,7 @@ class Sanitize {
             refs,
             transform,
             globalCircular,
+            removeEmpty,
           })
 
           const v = sanitizer.sanitized
@@ -263,6 +276,7 @@ class Sanitize {
             xref: val,
             current_path: new_path,
             noStack,
+            removeEmpty,
             refs,
             transform,
             globalCircular,
@@ -295,16 +309,16 @@ class Sanitize {
    */
   private get_object_props = (o: PlainObject): PlainObject => {
     const ret: PlainObject = {}
-    Object.getOwnPropertyNames(o).forEach((k) => {
-      const v = o[k]
+    Object.getOwnPropertyNames(o).forEach((key) => {
+      const v = o[key]
 
       if (typeof v === 'function') return
       if (typeof v === 'symbol') return
       if (v === undefined) return
-      // if (isPlainObject(v) && isEmpty(v)) return
+      if (this.removeEmpty && isPlainObject(v) && isEmpty(v)) return
       // if (Array.isArray(v) && v.length === 0) return
 
-      ret[k] = v
+      ret[key] = v
     })
     return ret
   }
@@ -321,7 +335,7 @@ class Sanitize {
           if (typeof v === 'function') return
           if (typeof v === 'symbol') return
           if (v === undefined) return
-          // if (isPlainObject(v) && isEmpty(v)) return
+          if (this.removeEmpty && isPlainObject(v) && isEmpty(v)) return
           // if (Array.isArray(v) && v.length === 0) return
 
           ret[key] = v
