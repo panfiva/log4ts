@@ -1,7 +1,7 @@
 import debugLib from 'debug'
 const debug = debugLib('log4ts:logger')
 
-import { LoggingEvent } from './loggingEvent'
+import { LogEvent } from './logEvent'
 import type { LevelParam, LoggerConfig } from './types'
 import type { Level } from './level'
 import { getLevelRegistry } from './level'
@@ -161,7 +161,7 @@ export class Logger<
           this.callStackSkipIndex + defaultErrorCallStackSkip + baseCallStackSkip
         )
     }
-    const loggingEvent = new LoggingEvent({
+    const logEvent = new LogEvent({
       loggerName: this.loggerName,
       level: level,
       data: data,
@@ -170,7 +170,7 @@ export class Logger<
       error,
     })
     const eventBus = getEventBus()
-    eventBus.send(loggingEvent)
+    eventBus.send(logEvent)
   }
 
   addContext<K extends TContext extends undefined ? never : keyof TContext>(

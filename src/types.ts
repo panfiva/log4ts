@@ -1,7 +1,7 @@
 import type { Level } from './level'
 import type { Logger } from './logger'
 import type { LogWriter } from './logWriter'
-import type { LoggingEvent } from './loggingEvent'
+import type { LogEvent } from './logEvent'
 
 /** Standard level name */
 export type LevelName =
@@ -93,7 +93,7 @@ export type LayoutFnInferred<
   TLogger extends Logger<any, any, any>,
   TLogWriter extends LogWriter<any, any>,
 > = (
-  event: LoggingEvent<
+  event: LogEvent<
     TLogger extends Logger<any, any, infer TDataOut> ? TDataOut : never,
     TLogger extends Logger<any, infer TContext, any> ? TContext : never
   >,

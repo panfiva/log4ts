@@ -84,7 +84,7 @@ type LoggingEventProps<TData, TContext extends Record<string, any>> = {
   }
 }
 
-export class LoggingEvent<TData, TContext extends Record<string, any> = never> {
+export class LogEvent<TData, TContext extends Record<string, any> = never> {
   startTime: Date
   level: Level
   context: TContext
@@ -124,9 +124,9 @@ export class LoggingEvent<TData, TContext extends Record<string, any> = never> {
 
     if (location !== undefined) {
       if (!location || typeof location !== 'object' || Array.isArray(location))
-        throw new TypeError('Invalid location type passed to LoggingEvent constructor')
+        throw new TypeError('Invalid location type passed to LogEvent constructor')
 
-      const keys = LoggingEvent.getLocationKeys()
+      const keys = LogEvent.getLocationKeys()
       locationVal = omitBy(pick(location, keys), (v) => v === undefined)
     }
 
@@ -181,7 +181,7 @@ export class LoggingEvent<TData, TContext extends Record<string, any> = never> {
   }
 
   static deserialize(serialized: any) {
-    let event: LoggingEvent<any, any>
+    let event: LogEvent<any, any>
     try {
       const rehydratedEvent = flatted.parse(serialized, (key, value) => {
         if (value && value.message && value.stack) {
@@ -193,14 +193,14 @@ export class LoggingEvent<TData, TContext extends Record<string, any> = never> {
         }
         return serializer.deserialize(value)
       })
-      LoggingEvent.getLocationKeys().forEach((key) => {
+      LogEvent.getLocationKeys().forEach((key) => {
         if (typeof rehydratedEvent[key] !== 'undefined') {
           if (!rehydratedEvent.location) rehydratedEvent.location = {}
           rehydratedEvent.location[key] = rehydratedEvent[key]
         }
       })
 
-      event = new LoggingEvent({
+      event = new LogEvent({
         loggerName: rehydratedEvent.loggerName,
         // level: this.levels.getLevel(rehydratedEvent.level.levelStr, levels.getLevel('WARN')!),
         level: rehydratedEvent.level.levelStr,
@@ -216,7 +216,7 @@ export class LoggingEvent<TData, TContext extends Record<string, any> = never> {
         event.cluster = rehydratedEvent.cluster
       }
     } catch (e) {
-      event = new LoggingEvent({
+      event = new LogEvent({
         loggerName: 'log4ts',
         level: 'ERROR',
         data: ['Unable to parse log:', serialized, 'because: ', e],

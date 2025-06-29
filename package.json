@@ -1,7 +1,7 @@
 {
   "name": "@panfiva/log4ts",
   "packageManager": "yarn@4.9.2",
-  "version": "0.0.13",
+  "version": "0.0.14",
   "description": "Port of log4js-node to TypeScript",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -64,7 +64,7 @@
     "@types/debug": "^4.1.12",
     "@types/fs-extra": "^11",
     "@types/lodash": "^4.17.19",
-    "@types/node": "^24.0.6",
+    "@types/node": "^24.0.7",
     "eslint": "^9.30.0",
     "prettier": "^3.6.2",
     "tsc-watch": "^7.1.1",

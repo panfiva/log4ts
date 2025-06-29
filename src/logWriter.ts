@@ -1,5 +1,5 @@
 import type { LevelName, LoggerArg } from './types'
-import type { LoggingEvent } from './loggingEvent'
+import type { LogEvent } from './logEvent'
 import type { Logger } from './logger'
 
 import { getEventBus } from './eventBus'
@@ -20,7 +20,7 @@ export type LayoutFn<
   TConfigA extends Record<string, any>,
   TContext extends Record<string, any>,
 > = (
-  event: LoggingEvent<TData, TContext>,
+  event: LogEvent<TData, TContext>,
   logWriterName: string,
   logWriterConfig: TConfigA
 ) => TFormattedData
@@ -101,7 +101,7 @@ export abstract class LogWriter<
 
     const listener = function (
       this: LogWriter<TFormattedData, TConfigA>,
-      event: LoggingEvent<any, any> // do not use TData and TContext since we are pushing generic listeners
+      event: LogEvent<any, any> // do not use TData and TContext since we are pushing generic listeners
     ) {
       const data = layoutFn(event, this.name, this.config)
 

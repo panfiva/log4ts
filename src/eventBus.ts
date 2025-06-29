@@ -4,7 +4,7 @@ const debug = debugLib('log4ts:clustering')
 import EventEmitter from 'eventemitter3'
 
 import type { Worker, Cluster } from 'cluster'
-import type { LoggingEvent } from './loggingEvent'
+import type { LogEvent } from './logEvent'
 import type { LevelName, LoggerArg } from './types'
 import type { LogWriter, ShutdownCb } from './logWriter'
 import type { Logger } from './logger'
@@ -20,7 +20,7 @@ export type EventListenerConfig<
   TDataOut extends Array<LoggerArg> = TData,
 > = {
   levelName: LevelName
-  listener: (event: LoggingEvent<TData, TContext>) => void
+  listener: (event: LogEvent<TData, TContext>) => void
   logger: Logger<TData, TContext, TDataOut>
   logWriter: LogWriter<TFormattedData, TConfigA>
 }
@@ -106,7 +106,7 @@ class EventBus extends EventEmitter<'log4ts:pause'> {
     return (this.cluster && this.cluster.isPrimary) || !this.cluster
   }
 
-  private sendToListeners = (logEvent: LoggingEvent<any, any>) => {
+  private sendToListeners = (logEvent: LogEvent<any, any>) => {
     if (!this.enabled) return
 
     const listeners = this._logWriterListeners.filter(
@@ -126,12 +126,12 @@ class EventBus extends EventEmitter<'log4ts:pause'> {
     //   worker = undefined
     // }
     // if (message && message.topic === 'log4ts:message') {
-    //   const logEvent = LoggingEvent.deserialize(message.data)
+    //   const logEvent = LogEvent.deserialize(message.data)
     //   this.sendToListeners(logEvent)
     // }
   }
 
-  public send(msg: LoggingEvent<any, any>) {
+  public send(msg: LogEvent<any, any>) {
     if (this.isMaster()) {
       this.sendToListeners(msg)
     }
