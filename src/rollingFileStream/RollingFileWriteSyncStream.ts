@@ -317,5 +317,6 @@ export class RollingFileWriteSyncStream {
 
     // try to throw EISDIR, EROFS, EACCES
     fs.appendFileSync(filePath, '', { encoding, flag, mode })
+    fs.chmodSync(filePath, mode)
   }
 }

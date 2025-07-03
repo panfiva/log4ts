@@ -342,6 +342,7 @@ export class RollingFileWriteStream extends Writable {
 
     // try to throw EISDIR, EROFS, EACCES
     fs.appendFileSync(filePath, '', { encoding, flag, mode })
+    fs.chmodSync(filePath, mode)
     this.currentFileStream = fs.createWriteStream(filePath, ops)
     this.currentFileStream.on('error', (e) => {
       this.emit('error', e)
