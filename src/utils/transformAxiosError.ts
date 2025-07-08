@@ -143,7 +143,7 @@ export function transformAxiosError(
         message: 'axios.failed',
         status,
         ...e3,
-        response: { headers, data: { 'e.response.data': data } },
+        response: { headers, data },
       }
     } else if (e.request) {
       // The request was made but no response was received (null response)
