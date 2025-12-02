@@ -190,7 +190,11 @@ class Sanitize {
   private _removeCircularRef = (o: RecordOrArray, isRefOwner: boolean): any => {
     const { current_path, refs, noStack, transform, globalCircular, removeEmpty } = this
 
-    if (o && typeof o === 'object') {
+    if (o instanceof Date) {
+      return this.data
+    }
+    // objects
+    else if (o && typeof o === 'object') {
       const isAr: boolean = Array.isArray(o)
 
       const ret: RecordOrArray = isAr ? [] : {}
@@ -203,8 +207,14 @@ class Sanitize {
           if (isAr) ret.push(val)
           else {
             if (val === undefined) return
-            // if (Array.isArray(val) && val.length === 0) return
-            if (this.removeEmpty && val && typeof val === 'object' && isEmpty(val)) return
+            if (
+              this.removeEmpty &&
+              val &&
+              isPlainObject(val) &&
+              !(val instanceof Date) &&
+              isEmpty(val)
+            )
+              return
             ret[key as K] = val
           }
         }
@@ -296,7 +306,6 @@ class Sanitize {
 
       return ret
     }
-
     // primitive types (non-objects)
     else {
       return this.data
