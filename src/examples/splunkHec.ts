@@ -106,6 +106,7 @@ const data: EventPayload = {
     executionId: 'executionId-103',
     resourceId: 'resourceId-104',
     target: 'test-project-1749',
+    dt: new Date(),
   },
 }
 
