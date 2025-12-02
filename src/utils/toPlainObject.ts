@@ -255,7 +255,8 @@ class Sanitize {
           typeof val === 'string' ||
           typeof val === 'boolean' ||
           typeof val === 'number' ||
-          typeof val === 'bigint'
+          typeof val === 'bigint' ||
+          val instanceof Date
         ) {
           add(val)
         }
