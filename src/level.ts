@@ -49,15 +49,15 @@ class LevelRegistry {
     props?: Partial<LevelConstructorProps>
   ) {
     const standardLevels: LevelConstructorProps = {
-      ALL: { value: Number.MIN_VALUE, color: 'grey' },
+      ALL: { value: Number.MIN_VALUE, color: 'gray' },
       TRACE: { value: 5000, color: 'blue' },
       DEBUG: { value: 10000, color: 'cyan' },
       INFO: { value: 20000, color: 'green' },
       WARN: { value: 30000, color: 'yellow' },
       ERROR: { value: 40000, color: 'red' },
       FATAL: { value: 50000, color: 'magenta' },
-      MARK: { value: 9007199254740992, color: 'grey' },
-      OFF: { value: Number.MAX_VALUE, color: 'grey' },
+      MARK: { value: 9007199254740992, color: 'gray' },
+      OFF: { value: Number.MAX_VALUE, color: 'gray' },
     }
 
     this.addLevels(standardLevels as LevelConstructorProps)

@@ -17,7 +17,7 @@ export type LevelName =
 
 export type ValidColors =
   | 'white'
-  | 'grey'
+  | 'gray'
   | 'black'
   | 'blue'
   | 'cyan'
