@@ -118,7 +118,7 @@ export class LogEvent<TData, TContext extends Record<string, any> = never> {
   }
 
   constructor(param: Omit<LoggingEventProps<TData, TContext>, 'pid'>) {
-    const { loggerName, level, data, context = {} as TContext, location, error, cluster } = param
+    const { loggerName, level, data, context = {} as TContext, location, error } = param
 
     let locationVal: CallStack | undefined = undefined
 
