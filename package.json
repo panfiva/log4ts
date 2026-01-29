@@ -26,7 +26,7 @@
   },
   "scripts": {
     "prettier": "prettier --config ./.prettierrc.mjs --write --list-different \"src/**/*.{js,jsx,json,ts,tsx,css,md,jsonc,mjs,cjs}\"",
-    "start": "yarn build && bash -c 'set -e; [ -f .env ] && set -o allexport && source .env && set +o allexport; tsc-watch --onSuccess \"node ./dist/index.js\"'",
+    "start": "yarn build && bash -c 'set -e; [ -f .env ] && set -o allexport && source .env && set +o allexport; tsc-watch --onSuccess \"node ${START_PATH:-./dist/index.js}\"'",
     "build": "tsc --build",
     "update": "npx npm-check-updates  --deep --upgrade",
     "upgrade": "yarn set version stable && rm -f yarn.lock && yarn install",
