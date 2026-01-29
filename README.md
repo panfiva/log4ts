@@ -67,13 +67,11 @@ All examples are configured with process signal listeners to demonstrate event h
   - Writing to a rolling log file
   - Define data type of log function parameters
   - Process cleanup when `SIGINT` signal received
-  - Infer layout function parameters inside `<writer>.register()`
 
 - [Multi-File Log Writer](./src/examples/multiFile.ts)
   - Write to the same file using different loggers
-  - Dynamically define which file will be used based on data attributes
-  - Set and use logger context
-  - Explicitly define layout function data type to infer its parameters
+  - Dynamically define which file will be used based on context (logger 1)
+  - Dynamically define which file will be used based on payload (logger 2)
 
 - [Splunk HEC Log Writer](./src/examples/splunkHec.ts)
   - Constrain log function args to specific data shape
@@ -81,10 +79,11 @@ All examples are configured with process signal listeners to demonstrate event h
 
 - [Custom Context](src/examples/customContext.ts)
   - Create a second instance of a logger with different context
+  - Both logger instances share the same name and same input/output types
 
 - [Custom Logger Output](src/examples/customLoggerOutput.ts)
   - Create 2 classes that accept different data format to be
-    forwarded to a shared event writer
+    forwarded to a shared event writer that accepts array of strings
 
 - [Sync File Log Writer](./src/examples/fileSync.ts)
   - Writing to a rolling file synchronously

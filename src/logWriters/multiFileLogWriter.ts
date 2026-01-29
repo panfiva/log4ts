@@ -6,15 +6,18 @@ import { Mutex } from 'async-mutex'
 import debugLib from 'debug'
 const debug = debugLib('log4ts:logWriter:multiFileLogWriter')
 
-export type MultiFileLogWriterOptions = {
+export type MultiFileLogWriterConfig = {
   baseDir: string
   /** timeout duration (ms) before file write is closed due to inactivity */
   timeout?: number
 } & Omit<FileLogWriterConfig, 'filename'>
 
-type Payload = { data: string; filename: string }
+export type MultiFileLogWriterParam = { data: string; filename: string }
 
-export class MultiFileLogWriter extends LogWriter<Payload, MultiFileLogWriterOptions> {
+export class MultiFileLogWriter extends LogWriter<
+  MultiFileLogWriterParam,
+  MultiFileLogWriterConfig
+> {
   private state: Map<
     string,
     {
@@ -25,12 +28,8 @@ export class MultiFileLogWriter extends LogWriter<Payload, MultiFileLogWriterOpt
 
   private mutex = new Mutex()
 
-  config: MultiFileLogWriterOptions
-
-  constructor(name: string, config: MultiFileLogWriterOptions) {
-    super(name)
-
-    this.config = config
+  constructor(name: string, config: MultiFileLogWriterConfig) {
+    super({ name, config })
   }
 
   private checkForTimeout(fileKey: string, filename: string) {
@@ -67,7 +66,7 @@ export class MultiFileLogWriter extends LogWriter<Payload, MultiFileLogWriterOpt
     }
   }
 
-  protected _write = async (payload: Payload) => {
+  protected _write = async (payload: MultiFileLogWriterParam) => {
     const { baseDir, timeout, ...restConfig } = this.config
 
     /** combines `config.baseDir` and `payload.filename` */

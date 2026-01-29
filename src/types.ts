@@ -64,44 +64,7 @@ export type CallStack = {
   lineNumber?: number
 }
 
-export type PartialBy<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>
-
-export type RequiredBy<T, K extends keyof T> = Omit<T, K> & Required<Pick<T, K>>
-
-export type EmptyObject = { [K in any]: never }
-
-export type LayoutFn<
-  // Logger data shape
-  D extends Array<LoggerArg> = Array<LoggerArg>,
-  // logWriter configs
-  CA extends Record<string, any> = Record<string, any>,
-  // Data accepted by logWriter
-  DA = any,
-  // Context
-  CO extends Record<string, any> = Record<string, any>,
-> = (
-  data: D,
-  options: {
-    logWriterConfig: CA
-    context: CO
-    loggerName: string
-    level: Level
-  }
-) => DA
-
-export type LayoutFnInferred<
-  TLogger extends Logger<any, any, any>,
-  TLogWriter extends LogWriter<any, any>,
-> = (
-  event: LogEvent<
-    TLogger extends Logger<any, any, infer TDataOut> ? TDataOut : never,
-    TLogger extends Logger<any, infer TContext, any> ? TContext : never
-  >,
-  logWriterName: string,
-  logWriterConfig: TLogWriter extends LogWriter<any, infer TConfigA> ? TConfigA : never
-) => TLogWriter extends LogWriter<infer TFormattedData, any> ? TFormattedData : never
-
-export type LoggerConfig<TContext extends Record<string, any>> = {
+type _LoggerConfig<LoggerContext extends Record<string, any>> = {
   /** logger name */
   loggerName: string
 
@@ -115,5 +78,18 @@ export type LoggerConfig<TContext extends Record<string, any>> = {
   /** indicates if callstack should be recorded  */
   useCallStack?: boolean
 
-  context?: TContext
+  /** context applied to all logger calls */
+  context?: LoggerContext
 }
+
+// Helper type: If LoggerContext is never or any, context is optional; otherwise required
+// If LoggerContext is never, context is not allowed
+// If LoggerContext is any, context is optional
+// Otherwise, context is required
+export type LoggerConfig<LoggerContext extends Record<string, any>> = [LoggerContext] extends [
+  never,
+]
+  ? Omit<_LoggerConfig<LoggerContext>, 'context'> & { context?: Record<string, never> }
+  : [unknown] extends [LoggerContext]
+    ? Omit<_LoggerConfig<LoggerContext>, 'context'> & { context?: LoggerContext }
+    : Omit<_LoggerConfig<LoggerContext>, 'context'> & { context: LoggerContext }

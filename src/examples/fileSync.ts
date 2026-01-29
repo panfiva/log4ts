@@ -3,7 +3,14 @@ export DEBUG=log4ts:RollingFileWriteSyncStream
 yarn run build && node ./dist/examples/fileSync.js
 */
 
-import { Logger, FileLogWriterSync } from '..'
+import {
+  LogEvent,
+  Layout,
+  Logger,
+  FileLogWriterSync,
+  FileLogWriterSyncConfig,
+  FileLogWriterSyncParam,
+} from '..'
 
 import { configure_process } from './configure_process'
 
@@ -11,24 +18,41 @@ import { configure_process } from './configure_process'
 // see function configurations to see how process events can be handled
 configure_process(2)
 
-const logger = new Logger({
-  loggerName: 'fileLogger',
+/** one one parameter will be accepted in logger functions */
+type LoggerArgs = [string | number]
+type LoggerReturn = [string | number]
+type LogWriterParam = FileLogWriterSyncParam
+type LogWriterConfig = FileLogWriterSyncConfig
+type LoggerContext = never
+
+class SampleLogger extends Logger<LoggerArgs, LoggerContext, LoggerReturn> {
+  getLogData(...args: LoggerArgs): LoggerReturn {
+    return args
+  }
+}
+
+const logger = new SampleLogger({
+  loggerName: 'fileLogger-sync',
   level: 'DEBUG',
 })
 
-const fileWriter = new FileLogWriterSync('fileWriter', {
+const fileWriter = new FileLogWriterSync('fileWriter-sync', {
   filename: './logs/test.txt',
   backups: 1,
-  maxLogSize: 20, // size in bytes
+  maxLogSize: 1024, // size in bytes
   mode: 0o644,
 })
 
-fileWriter.register(logger, 'DEBUG', (event, logWriterName, _logWriterConfig) => {
-  return (
-    `${event.startTime.toISOString()} [${event.level}] ` +
-    `[logger: ${event.loggerName}] [context] ${JSON.stringify(event.context) ?? '{}'} ` +
-    `[writer: ${logWriterName}] ${event.data[0]} `
-  )
-})
+class SampleLayout extends Layout<LoggerReturn, LogWriterParam, LoggerContext, LogWriterConfig> {
+  format(event: LogEvent<LoggerReturn, LoggerContext>): LogWriterParam {
+    return (
+      `${event.startTime.toISOString()} [${event.level}] ` +
+      `[logger: ${event.loggerName}] [writer: ${this.logWriterName}]` +
+      ` ${event.data[0]} [context] ${JSON.stringify(event.context) ?? '{}'}`
+    )
+  }
+}
+
+fileWriter.register(logger.loggerName, 'DEBUG', SampleLayout)
 
 logger.info('sample event')

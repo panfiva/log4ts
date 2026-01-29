@@ -1,9 +1,11 @@
-/*
-export DEBUG=
-yarn run build && node ./dist/examples/customContext.js
-*/
-
-import { Logger, ConsoleLogWriter } from '..'
+import {
+  Logger,
+  ConsoleLogWriter,
+  ConsoleLogWriterConfig,
+  ConsoleLogWriterParam,
+  Layout,
+  LogEvent,
+} from '..'
 
 import { configure_process } from './configure_process'
 
@@ -11,20 +13,48 @@ import { configure_process } from './configure_process'
 // see function configurations to see how process events can be handled
 configure_process(2)
 
-const logger = new Logger({ loggerName: 'L', level: 'INFO', context: { label: 'test' } })
-const writer = new ConsoleLogWriter('W2')
+type LoggerArgs = any[]
+type LoggerReturn = any
+type LogWriterParam = ConsoleLogWriterParam
+type LogWriterConfig = ConsoleLogWriterConfig
+type LoggerContext = { label: string }
 
-writer.register(logger, 'INFO', (event, _writerName, _writerConfig) => {
-  const { data, startTime, context } = event
-  return [{ data, startTime, context }]
-})
+const LOGGER_NAME = 'Test Logger'
 
-const logger2 = new Logger({
-  loggerName: logger.loggerName,
+class SampleLogger extends Logger<LoggerArgs, LoggerContext, LoggerReturn> {
+  getLogData(...args: LoggerArgs): LoggerReturn {
+    return args
+  }
+}
+
+const logger1 = new SampleLogger({
+  loggerName: LOGGER_NAME,
   level: 'INFO',
-  context: { custom: 'test' },
+  context: { label: 'Context 1' },
 })
 
-logger.info('test1')
+const logger2 = new SampleLogger({
+  loggerName: LOGGER_NAME,
+  level: 'INFO',
+  context: { label: 'Context 2' },
+})
+
+const writer = new ConsoleLogWriter<LogWriterParam>('Writer Name')
+
+class ConsoleLogLayout extends Layout<
+  LoggerReturn,
+  LogWriterParam,
+  LoggerContext,
+  LogWriterConfig
+> {
+  format(event: LogEvent<LoggerReturn, LoggerContext>): LogWriterParam {
+    const { data, startTime, context } = event
+    return [{ loggerName: this.loggerName, data, startTime, context }]
+  }
+}
+
+writer.register<LoggerContext, LoggerReturn>(LOGGER_NAME, 'INFO', ConsoleLogLayout)
+
+logger1.info('test1')
 logger2.info('test2')
-logger.info('test3')
+logger1.info('test3')

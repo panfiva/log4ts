@@ -1,20 +1,15 @@
-/*
-export DEBUG=log4ts:RollingFileWriteStream
-yarn run build && node ./dist/examples/test-fileStream.js
-*/
-
 import { RollingFileWriteStream } from '../rollingFileStream/RollingFileWriteStream'
 import * as fs from 'fs-extra'
 import * as os from 'os'
 
 const eol = os.EOL
 
-fs.appendFileSync('./logs/rolling-undef.txt', '00-123123123')
+fs.appendFileSync('./logs/rolling-undef.txt', '00-VALID_DATA')
 
 // the following files are out of sequence as file `rolling-1.txt.1` is missing
 // they will be deleted on the very first roll, regardless of backup settings
-fs.appendFileSync('./logs/rolling-undef.txt.2', '02-123123123')
-fs.appendFileSync('./logs/rolling-undef.txt.3', '03-123123123')
+fs.appendFileSync('./logs/rolling-undef.txt.2', '02-INVALID_DATA')
+fs.appendFileSync('./logs/rolling-undef.txt.3', '03-INVALID_DATA')
 
 const streamUndef = new RollingFileWriteStream('./logs/rolling-undef.txt', {
   maxSize: 5,

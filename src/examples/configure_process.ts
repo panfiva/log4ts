@@ -1,25 +1,47 @@
 import debugLib from 'debug'
 const debug = debugLib('log4ts:configure_process')
 
-import { Logger, ConsoleLogWriter, shutdown } from '..'
+import {
+  Logger,
+  ConsoleLogWriter,
+  shutdown,
+  Layout,
+  LogEvent,
+  ConsoleLogWriterConfig,
+  ConsoleLogWriterParam,
+} from '..'
 
 type Seconds = number
 
-export const configure_process = (/** duration in seconds before exit */ duration?: Seconds) => {
-  type LoggerData = any[]
-  type WriterData = any[]
+type LoggerArgs = any
+type LoggerReturn = any
+type LogWriterParam = ConsoleLogWriterParam
+type LogWriterConfig = ConsoleLogWriterConfig
+type LoggerContext = never
 
-  const logger = new Logger<LoggerData, never>({
-    level: 'DEBUG',
-    loggerName: 'node_process_logger',
-    useCallStack: false,
-  })
+class ProcessLogger extends Logger<LoggerArgs, LoggerContext, LoggerReturn> {
+  getLogData(...args: LoggerArgs): LoggerReturn {
+    return args
+  }
+}
 
-  const logWriter = new ConsoleLogWriter<WriterData>('node_process_writer')
+const logger = new ProcessLogger({
+  level: 'DEBUG',
+  loggerName: 'node_process_logger',
+  useCallStack: false,
+  context: {},
+})
 
-  logWriter.register(logger, 'DEBUG', (event) => {
+class Layout_Console extends Layout<LoggerReturn, LogWriterParam, LoggerContext, LogWriterConfig> {
+  format(event: LogEvent<LoggerArgs, LoggerContext>): LogWriterParam {
     return [`[node_process_writer]:`, event.startTime, `[${event.level.levelName}]`, ...event.data]
-  })
+  }
+}
+
+const logWriter = new ConsoleLogWriter<LoggerArgs>('node_process_writer')
+
+export const configure_process = (/** duration in seconds before exit */ duration?: Seconds) => {
+  logWriter.register(logger.loggerName, 'DEBUG', Layout_Console)
 
   const process_signal_handler = (
     reason: 'SIGINT' | 'SIGTERM' | 'uncaughtException' | 'unhandledRejection'

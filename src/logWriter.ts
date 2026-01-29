@@ -1,8 +1,10 @@
-import type { LevelName, LoggerArg } from './types'
+import type { LevelName } from './types'
 import type { LogEvent } from './logEvent'
-import type { Logger } from './logger'
 
-import { getEventBus } from './eventBus'
+import { getEventBus, EventListenerConfig } from './eventBus'
+import { LayoutConstructor } from './layout'
+
+import { requiredObject } from './utils/requiredObject'
 
 import debugLib from 'debug'
 const debugShutdown = debugLib('log4ts:logWriter:shutdown')
@@ -14,25 +16,26 @@ export type ShutdownCb = ((e?: Error) => void) | ((e?: Error) => Promise<void>)
 
 export type ShutdownFn = ((cb?: ShutdownCb) => Promise<void>) | ((cb?: ShutdownCb) => void)
 
-export type LayoutFn<
-  TData extends Array<LoggerArg>,
-  TFormattedData,
-  TConfigA extends Record<string, any>,
-  TContext extends Record<string, any>,
-> = (
-  event: LogEvent<TData, TContext>,
-  logWriterName: string,
-  logWriterConfig: TConfigA
-) => TFormattedData
+// Helper type: If LoggerContext is never or any, context is optional; otherwise required
+// If LoggerContext is never, context is not allowed
+// If LoggerContext is any, context is optional
+// Otherwise, context is required
+export type LogWriterConstructorParams<LogWriterConfig extends Record<string, any>> = ([
+  LogWriterConfig,
+] extends [never]
+  ? { config?: Record<string, never> }
+  : [unknown] extends [LogWriterConfig]
+    ? { config?: LogWriterConfig }
+    : { config: LogWriterConfig }) & { name: string }
 
 /**
  * class that writes logs to the destination repository
  */
 export abstract class LogWriter<
   // data shape that logWriter accepts
-  TFormattedData,
+  LogWriterParam,
   // logWriter config parameters
-  TConfigA extends Record<string, any>,
+  LogWriterConfig extends Record<string, any>,
 > {
   name: string
 
@@ -40,13 +43,14 @@ export abstract class LogWriter<
   protected activeWrites = new Set<object>()
 
   /** logWriter configurations */
-  abstract config: TConfigA
+  config: [LogWriterConfig] extends [never] ? Record<string, never> : LogWriterConfig
 
   /** indicate that shutdown event was triggered */
   isShuttingDown: boolean = false
 
-  constructor(name: string) {
-    this.name = name
+  constructor(params: LogWriterConstructorParams<LogWriterConfig>) {
+    this.config = requiredObject<LogWriterConfig>(params.config)
+    this.name = params.name
   }
 
   /**
@@ -78,8 +82,12 @@ export abstract class LogWriter<
     if (cb) cb()
   }
 
-  register<TLogger extends Logger<any, any, any>>(
-    logger: TLogger,
+  /**
+   * Generates event listener function executes layout function to transform event data to format accepted by log writer
+   */
+
+  register<LoggerContext extends Record<string, any>, LoggerReturn = any>(
+    loggerName: string,
 
     /**
      * controls what low writers will receive message sent by a logger
@@ -88,22 +96,22 @@ export abstract class LogWriter<
      */
     levelName: LevelName,
 
-    /** callback function that transforms event payload to format accepted by logWriter  */
-    layoutFn: LayoutFn<
-      TLogger extends Logger<any, any, infer TDataOut> ? TDataOut : never,
-      TFormattedData,
-      TConfigA,
-      TLogger extends Logger<any, infer TContext, any> ? TContext : never
-    >
+    /** Layout class constructor that transforms event payload to format accepted by logWriter  */
+    Layout: LayoutConstructor<LoggerReturn, LogWriterParam, LoggerContext, LogWriterConfig>
   ): void {
     // type TData = TLogger extends Logger<infer U, any> ? U : never
     // type TContext = TLogger extends Logger<any, infer U> ? U : never
 
-    const listener = function (
-      this: LogWriter<TFormattedData, TConfigA>,
+    const listener: EventListenerConfig<any, any, any, any>['listener'] = function (
+      this: LogWriter<LogWriterParam, LogWriterConfig>,
       event: LogEvent<any, any> // do not use TData and TContext since we are pushing generic listeners
     ) {
-      const data = layoutFn(event, this.name, this.config)
+      const layout = new Layout({
+        loggerName: loggerName,
+        LogWriterConfig: this.config,
+        logWriterName: this.name,
+      })
+      const data = layout.format(event)
 
       this.write(data)
     }.bind(this)
@@ -114,7 +122,7 @@ export abstract class LogWriter<
       levelName,
       listener,
       logWriter: this,
-      logger,
+      loggerName,
     })
   }
 
@@ -128,7 +136,7 @@ export abstract class LogWriter<
    * execution is triggered by `EventBus.sendToListeners()` function call;
    * listeners are added to `EventBus.logWriterListeners` by `LogWriterClass.register()`;
    */
-  write: WriteMethod<TFormattedData> = async (data: TFormattedData) => {
+  write: WriteMethod<LogWriterParam> = async (data: LogWriterParam) => {
     const pointer = {}
     this.activeWrites.add(pointer)
 
@@ -150,5 +158,5 @@ export abstract class LogWriter<
    *
    * Warning! Use _write when file writer needs to be used
    */
-  protected abstract _write: WriteMethod<TFormattedData>
+  protected abstract _write: WriteMethod<LogWriterParam>
 }
