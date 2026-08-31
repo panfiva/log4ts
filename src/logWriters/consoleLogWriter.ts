@@ -4,7 +4,7 @@ import debugLib from 'debug'
 const debug = debugLib('log4ts:logWriter:console')
 
 export type ConsoleLogWriterParam = any[]
-export type ConsoleLogWriterConfig = never
+export type ConsoleLogWriterConfig = any
 
 export class ConsoleLogWriter<LogWriterParam extends ConsoleLogWriterParam> extends LogWriter<
   LogWriterParam,

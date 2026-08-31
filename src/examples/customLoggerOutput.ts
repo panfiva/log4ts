@@ -5,6 +5,7 @@ import {
   ConsoleLogWriterParam,
   Layout,
   LogEvent,
+  BuildEventDataResult,
 } from '..'
 
 import { configure_process } from './configure_process'
@@ -20,26 +21,39 @@ type LoggerArgs_1 = [string]
 type LoggerArgs_2 = [{ data: string; type: 't1' | 't2' }]
 
 /** both loggers must return the same data */
-type LoggerReturn = string
+type LoggerReturnData = string
 
 type LogWriterParam = ConsoleLogWriterParam
 type LogWriterConfig = ConsoleLogWriterConfig
-type LoggerContext = never
+type LoggerContext = any
+type LoggerReturnContext = any
 
-class Logger1 extends Logger<LoggerArgs_1, LoggerContext, LoggerReturn> {
+class Logger1 extends Logger<LoggerArgs_1, LoggerContext, LoggerReturnData, LoggerReturnContext> {
   // this logger accepts one parameter - string
   // no transformation is needed
-  getLogData(...args: LoggerArgs_1): LoggerReturn {
-    return args[0]
+  buildEventPayload(
+    ...args: LoggerArgs_1
+  ): BuildEventDataResult<LoggerReturnData, LoggerReturnContext> {
+    return {
+      data: args[0],
+      context: this.context,
+      error: this.getFirstError(...args),
+    }
   }
 }
 
-class Logger2 extends Logger<LoggerArgs_2, LoggerContext, LoggerReturn> {
+class Logger2 extends Logger<LoggerArgs_2, LoggerContext, LoggerReturnData, LoggerReturnContext> {
   // this logger accepts one parameter - object
   // so we convert this object to string and return it
   // this will make return consistent with Logger1's return
-  getLogData(...args: LoggerArgs_2): LoggerReturn {
-    return JSON.stringify(args[0])
+  buildEventPayload(
+    ...args: LoggerArgs_2
+  ): BuildEventDataResult<LoggerReturnData, LoggerReturnContext> {
+    return {
+      data: JSON.stringify(args[0]),
+      context: this.context,
+      error: this.getFirstError(...args),
+    }
   }
 }
 
@@ -49,19 +63,24 @@ const logger1 = new Logger1({ loggerName: LOGGER_NAME, level: 'INFO' })
 const logger2 = new Logger2({ loggerName: LOGGER_NAME, level: 'INFO' })
 
 class ConsoleLogLayout extends Layout<
-  LoggerReturn,
+  LoggerReturnData,
   LogWriterParam,
-  LoggerContext,
+  LoggerReturnContext,
   LogWriterConfig
 > {
-  format(event: LogEvent<LoggerReturn, LoggerContext>): LogWriterParam {
+  format(event: LogEvent<LoggerReturnData, LoggerReturnContext>): LogWriterParam {
     return [event.data]
   }
 }
 
 const writer = new ConsoleLogWriter('console-writer')
+const layout = new ConsoleLogLayout({
+  loggerName: LOGGER_NAME,
+  logWriterName: writer.name,
+  logWriterConfig: writer.config,
+})
 
-writer.register(LOGGER_NAME, 'INFO', ConsoleLogLayout)
+writer.register(LOGGER_NAME, 'INFO', layout)
 
 logger1.info('test1')
 logger2.info({ data: 'test2', type: 't2' })

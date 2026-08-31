@@ -14,6 +14,7 @@ import {
   LevelName,
   Layout,
   LogEvent,
+  BuildEventDataResult,
 } from '..'
 
 import { configure_process } from './configure_process'
@@ -62,14 +63,26 @@ type EventPayload = Omit<
 // force users to provide 2 values to log functions: index and event payload
 type LoggerArgs = [index: string, event: EventPayload]
 
-type LoggerReturn = LoggerArgs
+type LoggerReturnData = LoggerArgs
 type LogWriterParam = SplunkHecLogWriterParam<Payload & PayloadLogWriter>
 type LogWriterConfig = SplunkHecLogWriterConfig
-type LoggerContext = never
+type LoggerContext = any
+type LoggerReturnContext = any
 
-class SampleLogger extends Logger<LoggerArgs, LoggerContext, LoggerReturn> {
-  getLogData(...args: LoggerArgs): LoggerReturn {
-    return args
+class SampleLogger extends Logger<
+  LoggerArgs,
+  LoggerContext,
+  LoggerReturnData,
+  LoggerReturnContext
+> {
+  buildEventPayload(
+    ...args: LoggerArgs
+  ): BuildEventDataResult<LoggerReturnData, LoggerReturnContext> {
+    return {
+      data: args,
+      context: this.context,
+      error: this.getFirstError(...args),
+    }
   }
 }
 
@@ -84,8 +97,13 @@ const writer = new SplunkHecLogWriter<LogWriterParam>('SplunkLogWriter', {
   token,
 })
 
-class SampleLayout extends Layout<LoggerReturn, LogWriterParam, LoggerContext, LogWriterConfig> {
-  format(event: LogEvent<LoggerReturn, LoggerContext>): LogWriterParam {
+class SampleLayout extends Layout<
+  LoggerReturnData,
+  LogWriterParam,
+  LoggerReturnContext,
+  LogWriterConfig
+> {
+  format(event: LogEvent<LoggerReturnData, LoggerReturnContext>): LogWriterParam {
     const index = event.data[0]
     const data = event.data[1]
 
@@ -112,8 +130,12 @@ class SampleLayout extends Layout<LoggerReturn, LogWriterParam, LoggerContext, L
     return ret
   }
 }
-
-writer.register<LoggerContext, LoggerReturn>(logger.loggerName, 'TRACE', SampleLayout)
+const layout = new SampleLayout({
+  loggerName: logger.loggerName,
+  logWriterName: writer.name,
+  logWriterConfig: writer.config,
+})
+writer.register<LoggerReturnContext, LoggerReturnData>(logger.loggerName, 'TRACE', layout)
 
 const data: EventPayload = {
   type: 'exec',

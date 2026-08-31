@@ -9,18 +9,31 @@ import {
   ConsoleLogWriterParam,
   Layout,
   LogEvent,
+  BuildEventDataResult,
 } from '..'
 import { formatWithOptions, styleText } from 'node:util'
 
 type LoggerArgs = [string | number | boolean, Record<string, any>]
-type LoggerReturn = [string | number | boolean, Record<string, any>]
+type LoggerReturnData = [string | number | boolean, Record<string, any>]
 type LogWriterParam = ConsoleLogWriterParam
 type LogWriterConfig = ConsoleLogWriterConfig
-type LoggerContext = never
+type LoggerContext = any
+type LoggerReturnContext = any
 
-class SampleLogger extends Logger<LoggerArgs, LoggerContext, LoggerReturn> {
-  getLogData(...args: LoggerArgs): LoggerReturn {
-    return args
+class SampleLogger extends Logger<
+  LoggerArgs,
+  LoggerContext,
+  LoggerReturnData,
+  LoggerReturnContext
+> {
+  buildEventPayload(
+    ...args: LoggerArgs
+  ): BuildEventDataResult<LoggerReturnData, LoggerReturnContext> {
+    return {
+      data: args,
+      context: this.context,
+      error: this.getFirstError(...args),
+    }
   }
 }
 
@@ -31,12 +44,12 @@ const logger = new SampleLogger({
 })
 
 class ConsoleLogLayout extends Layout<
-  LoggerReturn,
+  LoggerReturnData,
   LogWriterParam,
-  LoggerContext,
+  LoggerReturnContext,
   LogWriterConfig
 > {
-  format(event: LogEvent<LoggerReturn, LoggerContext>): LogWriterParam {
+  format(event: LogEvent<LoggerReturnData, LoggerReturnContext>): LogWriterParam {
     const data = [...event.data]
 
     const objectColors: boolean = true
@@ -56,8 +69,13 @@ class ConsoleLogLayout extends Layout<
 }
 
 const writer = new ConsoleLogWriter<LogWriterParam>('console-writer')
+const layout = new ConsoleLogLayout({
+  loggerName: logger.loggerName,
+  logWriterName: writer.name,
+  logWriterConfig: writer.config,
+})
 
-writer.register<LoggerContext, LoggerReturn>(logger.loggerName, 'TRACE', ConsoleLogLayout)
+writer.register<LoggerReturnContext, LoggerReturnData>(logger.loggerName, 'TRACE', layout)
 
 const obj = { a: { b: { c: [1, 2, 3, 4], e: { f: [1, 2, 3, 4] } } } }
 

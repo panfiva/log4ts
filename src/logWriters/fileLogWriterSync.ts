@@ -83,7 +83,6 @@ export class FileLogWriterSync extends LogWriter<FileLogWriterSyncParam, FileLog
 
   protected _write = (data: FileLogWriterSyncParam): void => {
     if (this.config.removeColor === true) {
-      // eslint-disable-next-line no-param-reassign
       data = data.replace(ansiRegex(), '')
     }
 

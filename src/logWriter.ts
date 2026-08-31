@@ -2,9 +2,7 @@ import type { LevelName } from './types'
 import type { LogEvent } from './logEvent'
 
 import { getEventBus, EventListenerConfig } from './eventBus'
-import { LayoutConstructor } from './layout'
-
-import { requiredObject } from './utils/requiredObject'
+import { Layout } from './layout'
 
 import debugLib from 'debug'
 const debugShutdown = debugLib('log4ts:logWriter:shutdown')
@@ -16,14 +14,14 @@ export type ShutdownCb = ((e?: Error) => void) | ((e?: Error) => Promise<void>)
 
 export type ShutdownFn = ((cb?: ShutdownCb) => Promise<void>) | ((cb?: ShutdownCb) => void)
 
-// Helper type: If LoggerContext is never or any, context is optional; otherwise required
-// If LoggerContext is never, context is not allowed
-// If LoggerContext is any, context is optional
+// Helper type: If TLoggerReturnContext is any, context is optional; otherwise required
+// If TLoggerReturnContext is never, throw error to indicate never should not be used; use any instead
+// If TLoggerReturnContext is any, context is optional
 // Otherwise, context is required
 export type LogWriterConstructorParams<LogWriterConfig extends Record<string, any>> = ([
   LogWriterConfig,
 ] extends [never]
-  ? { config?: Record<string, never> }
+  ? { config: Record<'never not allowed for context', 'use any instead'> }
   : [unknown] extends [LogWriterConfig]
     ? { config?: LogWriterConfig }
     : { config: LogWriterConfig }) & { name: string }
@@ -43,13 +41,13 @@ export abstract class LogWriter<
   protected activeWrites = new Set<object>()
 
   /** logWriter configurations */
-  config: [LogWriterConfig] extends [never] ? Record<string, never> : LogWriterConfig
+  config: LogWriterConfig
 
   /** indicate that shutdown event was triggered */
   isShuttingDown: boolean = false
 
   constructor(params: LogWriterConstructorParams<LogWriterConfig>) {
-    this.config = requiredObject<LogWriterConfig>(params.config)
+    this.config = params.config ?? ({} as any)
     this.name = params.name
   }
 
@@ -86,7 +84,7 @@ export abstract class LogWriter<
    * Generates event listener function executes layout function to transform event data to format accepted by log writer
    */
 
-  register<LoggerContext extends Record<string, any>, LoggerReturn = any>(
+  register<TLoggerReturnContext extends Record<string, any>, LoggerReturnData = any>(
     loggerName: string,
 
     /**
@@ -97,22 +95,13 @@ export abstract class LogWriter<
     levelName: LevelName,
 
     /** Layout class constructor that transforms event payload to format accepted by logWriter  */
-    Layout: LayoutConstructor<LoggerReturn, LogWriterParam, LoggerContext, LogWriterConfig>
+    layout: Layout<LoggerReturnData, LogWriterParam, TLoggerReturnContext, LogWriterConfig>
   ): void {
-    // type TData = TLogger extends Logger<infer U, any> ? U : never
-    // type TContext = TLogger extends Logger<any, infer U> ? U : never
-
     const listener: EventListenerConfig<any, any, any, any>['listener'] = function (
       this: LogWriter<LogWriterParam, LogWriterConfig>,
       event: LogEvent<any, any> // do not use TData and TContext since we are pushing generic listeners
     ) {
-      const layout = new Layout({
-        loggerName: loggerName,
-        LogWriterConfig: this.config,
-        logWriterName: this.name,
-      })
       const data = layout.format(event)
-
       this.write(data)
     }.bind(this)
 

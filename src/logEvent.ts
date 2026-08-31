@@ -52,7 +52,7 @@ class Serializer {
 }
 const serializer = new Serializer()
 
-type LoggingEventProps<TData, TContext extends Record<string, any>> = {
+type LoggingEventProps<TLoggerReturnData, TLoggerReturnContext extends Record<string, any>> = {
   loggerName: string
   level: LevelParam
 
@@ -63,7 +63,7 @@ type LoggingEventProps<TData, TContext extends Record<string, any>> = {
    * If that's the case, registered layout and/or logger transform functions
    * will need to be updated accordingly
    */
-  data: TData
+  data: TLoggerReturnData
 
   /**
    * error object or error export
@@ -71,7 +71,7 @@ type LoggingEventProps<TData, TContext extends Record<string, any>> = {
    */
   error?: Error | { message: string; stack?: string; [x: string]: any }
 
-  context?: TContext
+  context?: TLoggerReturnContext
   /** node process pid (`process.pid`) */
   pid: number
 
@@ -84,10 +84,13 @@ type LoggingEventProps<TData, TContext extends Record<string, any>> = {
   }
 }
 
-export class LogEvent<TData, TContext extends Record<string, any> = never> {
+export class LogEvent<
+  TLoggerReturnData,
+  TLoggerReturnContext extends Record<string, any> = Record<string, any>,
+> {
   startTime: Date
   level: Level
-  context: TContext
+  context: TLoggerReturnContext
 
   loggerName: string
 
@@ -98,7 +101,7 @@ export class LogEvent<TData, TContext extends Record<string, any> = never> {
    * If that's the case, registered layout and/or logger transform functions
    * will need to be updated accordingly
    */
-  data: TData
+  data: TLoggerReturnData
 
   /**
    * error object or error export
@@ -117,8 +120,8 @@ export class LogEvent<TData, TContext extends Record<string, any> = never> {
     worker: number
   }
 
-  constructor(param: Omit<LoggingEventProps<TData, TContext>, 'pid'>) {
-    const { loggerName, level, data, context = {} as TContext, location, error } = param
+  constructor(param: Omit<LoggingEventProps<TLoggerReturnData, TLoggerReturnContext>, 'pid'>) {
+    const { loggerName, level, data, context = {} as TLoggerReturnContext, location, error } = param
 
     let locationVal: CallStack | undefined = undefined
 

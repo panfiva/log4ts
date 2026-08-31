@@ -70,11 +70,8 @@ export const fileNameParserFactory = (props: FileNameParserOptions): FileNamePar
       if (asString(pattern as string, date) !== dateStr) {
         return f // The parsed date doesn't match the original string, so it's not a valid match.
       }
-      // eslint-disable-next-line no-param-reassign
       p.index = parseInt(indexStr, 10)
-      // eslint-disable-next-line no-param-reassign
       p.date = dateStr
-      // eslint-disable-next-line no-param-reassign
       p.timestamp = date.getTime()
       return '' // All parts consumed
     } catch (e) {
@@ -87,7 +84,6 @@ export const fileNameParserFactory = (props: FileNameParserOptions): FileNamePar
   const index: FileNameParserHelper = (f, p) => {
     if (f.match(/^\d+$/)) {
       debug('it has an index')
-      // eslint-disable-next-line no-param-reassign
       p.index = parseInt(f, 10)
       return '' // All parts consumed
     }

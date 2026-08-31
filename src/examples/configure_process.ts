@@ -9,19 +9,32 @@ import {
   LogEvent,
   ConsoleLogWriterConfig,
   ConsoleLogWriterParam,
+  BuildEventDataResult,
 } from '..'
 
 type Seconds = number
 
 type LoggerArgs = any
-type LoggerReturn = any
+type LoggerReturnData = any
 type LogWriterParam = ConsoleLogWriterParam
 type LogWriterConfig = ConsoleLogWriterConfig
-type LoggerContext = never
+type LoggerContext = any
+type LoggerReturnContext = any
 
-class ProcessLogger extends Logger<LoggerArgs, LoggerContext, LoggerReturn> {
-  getLogData(...args: LoggerArgs): LoggerReturn {
-    return args
+class ProcessLogger extends Logger<
+  LoggerArgs,
+  LoggerContext,
+  LoggerReturnData,
+  LoggerReturnContext
+> {
+  buildEventPayload(
+    ...args: LoggerArgs
+  ): BuildEventDataResult<LoggerReturnData, LoggerReturnContext> {
+    return {
+      data: args,
+      context: this.context,
+      error: this.getFirstError(...args),
+    }
   }
 }
 
@@ -32,7 +45,12 @@ const logger = new ProcessLogger({
   context: {},
 })
 
-class Layout_Console extends Layout<LoggerReturn, LogWriterParam, LoggerContext, LogWriterConfig> {
+class Layout_Console extends Layout<
+  LoggerReturnData,
+  LogWriterParam,
+  LoggerContext,
+  LogWriterConfig
+> {
   format(event: LogEvent<LoggerArgs, LoggerContext>): LogWriterParam {
     return [`[node_process_writer]:`, event.startTime, `[${event.level.levelName}]`, ...event.data]
   }
@@ -41,7 +59,12 @@ class Layout_Console extends Layout<LoggerReturn, LogWriterParam, LoggerContext,
 const logWriter = new ConsoleLogWriter<LoggerArgs>('node_process_writer')
 
 export const configure_process = (/** duration in seconds before exit */ duration?: Seconds) => {
-  logWriter.register(logger.loggerName, 'DEBUG', Layout_Console)
+  const layout = new Layout_Console({
+    loggerName: logger.loggerName,
+    logWriterName: logWriter.name,
+    logWriterConfig: logWriter.config,
+  })
+  logWriter.register(logger.loggerName, 'DEBUG', layout)
 
   const process_signal_handler = (
     reason: 'SIGINT' | 'SIGTERM' | 'uncaughtException' | 'unhandledRejection'

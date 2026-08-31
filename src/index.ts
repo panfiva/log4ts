@@ -22,7 +22,7 @@ export {
   SplunkHecLogWriterParam,
 } from './logWriters/splunkHecLogWriter'
 
-export { Logger, TransformFunctionReturn } from './logger'
+export { Logger, BuildEventDataResult } from './logger'
 export { getLevelRegistry } from './level'
 export type * from './types'
 export { shutdown } from './eventBus'

@@ -27,7 +27,18 @@ type RecordOrArray = PlainObject | Array<any>
 
 const CIRCULAR = '<circular ref>'
 
-/** exports Error to plain object; removes undefined, functions and also circular dependencies */
+/**
+ * exports Error to plain object; removes undefined, functions and also circular dependencies
+ *
+ * @example // transform function usage
+ * toPlainObject(v, {
+ *   transform: (v2) => {
+ *     if (v2 instanceof Error) return { isSanitized: true, value: exportErrorAny(v2) }
+ *     else return { isSanitized: false }
+ *   },
+ *   noStack: true,
+ * })
+ */
 export function toPlainObject<T, R = ToPlainObjectReturn<T>>(
   data: T,
   options?: {
@@ -109,6 +120,11 @@ type SanitizeProps = {
   globalCircular?: boolean
 }
 
+/** Purpose:
+ * - remove circular references
+ * - remove non-serializable values (functions, symbols, non-enumerable properties from Error and other classes)
+ * - execute custom transformation using 
+ */
 class Sanitize {
   /** actual object being processed */
   private xref: RecordOrArray
@@ -124,6 +140,15 @@ class Sanitize {
    * custom transformation function that can be applied to all objects and class instances
    * - if returns `return.isSanitized=true`, then `return.value` is used
    * - if return is `return.isSanitized=false`, then object follows the standard rules
+   *
+   * @example // transform function usage
+   * toPlainObject(v, {
+   *   transform: (v2) => {
+   *     if (v2 instanceof Error) return { isSanitized: true, value: exportErrorAny(v2) }
+   *     else return { isSanitized: false }
+   *   },
+   *   noStack: true,
+   * })
    */
   private transform: (value: any) => { isSanitized: true; value: any } | { isSanitized: false }
   /**

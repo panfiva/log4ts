@@ -112,7 +112,6 @@ export class FileLogWriter extends LogWriter<FileLogWriterParam, FileLogWriterCo
       return
     }
     if (this.config.removeColor === true) {
-      // eslint-disable-next-line no-param-reassign
       data = data.replace(ansiRegex(), '')
     }
 

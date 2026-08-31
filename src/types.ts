@@ -1,7 +1,4 @@
 import type { Level } from './level'
-import type { Logger } from './logger'
-import type { LogWriter } from './logWriter'
-import type { LogEvent } from './logEvent'
 
 /** Standard level name */
 export type LevelName =
@@ -82,14 +79,16 @@ type _LoggerConfig<LoggerContext extends Record<string, any>> = {
   context?: LoggerContext
 }
 
-// Helper type: If LoggerContext is never or any, context is optional; otherwise required
-// If LoggerContext is never, context is not allowed
+// Helper type: If LoggerContext is any, context is optional; otherwise required
+// If LoggerContext is never, throw error to indicate never should not be used; use any instead
 // If LoggerContext is any, context is optional
 // Otherwise, context is required
 export type LoggerConfig<LoggerContext extends Record<string, any>> = [LoggerContext] extends [
   never,
 ]
-  ? Omit<_LoggerConfig<LoggerContext>, 'context'> & { context?: Record<string, never> }
+  ? Omit<_LoggerConfig<LoggerContext>, 'context'> & {
+      context: Record<'never not allowed for context', 'use any instead'>
+    }
   : [unknown] extends [LoggerContext]
     ? Omit<_LoggerConfig<LoggerContext>, 'context'> & { context?: LoggerContext }
     : Omit<_LoggerConfig<LoggerContext>, 'context'> & { context: LoggerContext }

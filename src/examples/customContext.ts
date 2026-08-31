@@ -5,6 +5,7 @@ import {
   ConsoleLogWriterParam,
   Layout,
   LogEvent,
+  BuildEventDataResult,
 } from '..'
 
 import { configure_process } from './configure_process'
@@ -14,16 +15,28 @@ import { configure_process } from './configure_process'
 configure_process(2)
 
 type LoggerArgs = any[]
-type LoggerReturn = any
+type LoggerReturnData = any
 type LogWriterParam = ConsoleLogWriterParam
 type LogWriterConfig = ConsoleLogWriterConfig
 type LoggerContext = { label: string }
+type LoggerReturnContext = LoggerContext
 
 const LOGGER_NAME = 'Test Logger'
 
-class SampleLogger extends Logger<LoggerArgs, LoggerContext, LoggerReturn> {
-  getLogData(...args: LoggerArgs): LoggerReturn {
-    return args
+class SampleLogger extends Logger<
+  LoggerArgs,
+  LoggerContext,
+  LoggerReturnData,
+  LoggerReturnContext
+> {
+  buildEventPayload(
+    ...args: LoggerArgs
+  ): BuildEventDataResult<LoggerReturnData, LoggerReturnContext> {
+    return {
+      data: args,
+      context: this.context,
+      error: this.getFirstError(...args),
+    }
   }
 }
 
@@ -42,18 +55,23 @@ const logger2 = new SampleLogger({
 const writer = new ConsoleLogWriter<LogWriterParam>('Writer Name')
 
 class ConsoleLogLayout extends Layout<
-  LoggerReturn,
+  LoggerReturnData,
   LogWriterParam,
-  LoggerContext,
+  LoggerReturnContext,
   LogWriterConfig
 > {
-  format(event: LogEvent<LoggerReturn, LoggerContext>): LogWriterParam {
+  format(event: LogEvent<LoggerReturnData, LoggerReturnContext>): LogWriterParam {
     const { data, startTime, context } = event
     return [{ loggerName: this.loggerName, data, startTime, context }]
   }
 }
 
-writer.register<LoggerContext, LoggerReturn>(LOGGER_NAME, 'INFO', ConsoleLogLayout)
+const layout = new ConsoleLogLayout({
+  loggerName: LOGGER_NAME,
+  logWriterName: writer.name,
+  logWriterConfig: writer.config,
+})
+writer.register<LoggerReturnContext, LoggerReturnData>(LOGGER_NAME, 'INFO', layout)
 
 logger1.info('test1')
 logger2.info('test2')

@@ -5,6 +5,7 @@ import {
   MultiFileLogWriter,
   MultiFileLogWriterConfig,
   MultiFileLogWriterParam,
+  BuildEventDataResult,
 } from '..'
 
 import { configure_process } from './configure_process'
@@ -29,12 +30,24 @@ type LogWriterConfig = MultiFileLogWriterConfig
 type LoggerArgs1 = (string | number | boolean | object)[]
 type LoggerReturn1 = LoggerArgs1
 type LoggerContext1 = { filename: string }
+type LoggerReturnContext1 = LoggerContext1
 
 const logWriter = new MultiFileLogWriter('writer-name', options)
 
-class SampleLogger1 extends Logger<LoggerArgs1, LoggerContext1, LoggerReturn1> {
-  getLogData(...args: LoggerArgs1): LoggerReturn1 {
-    return args
+class SampleLogger1 extends Logger<
+  LoggerArgs1,
+  LoggerContext1,
+  LoggerReturn1,
+  LoggerReturnContext1
+> {
+  buildEventPayload(
+    ...args: LoggerArgs1
+  ): BuildEventDataResult<LoggerReturn1, LoggerReturnContext1> {
+    return {
+      data: args,
+      context: this.context,
+      error: this.getFirstError(...args),
+    }
   }
 }
 
@@ -46,27 +59,48 @@ const logger1 = new SampleLogger1({
   context: { filename: 'test1.log' },
 })
 
-class SampleLayout1 extends Layout<LoggerReturn1, LogWriterParam, LoggerContext1, LogWriterConfig> {
-  format(event: LogEvent<LoggerReturn1, LoggerContext1>): LogWriterParam {
+class SampleLayout1 extends Layout<
+  LoggerReturn1,
+  LogWriterParam,
+  LoggerReturnContext1,
+  LogWriterConfig
+> {
+  format(event: LogEvent<LoggerReturn1, LoggerReturnContext1>): LogWriterParam {
     const param = event.data
     const filename: string = event.context.filename
     return { filename: filename, data: param.join(': ') }
   }
 }
-
-logWriter.register(logger1.loggerName, 'DEBUG', SampleLayout1)
+const layout1 = new SampleLayout1({
+  loggerName: logger1.loggerName,
+  logWriterName: logWriter.name,
+  logWriterConfig: logWriter.config,
+})
+logWriter.register(logger1.loggerName, 'DEBUG', layout1)
 
 // one parameter with data and filename
 type LoggerArgs2 = [{ filename: string; data: (string | number | boolean | object)[] }]
 type LoggerReturn2 = LoggerArgs2
-type LoggerContext2 = never
+type LoggerContext2 = any
+type LoggerReturnContext2 = any
 
-class SampleLogger2 extends Logger<LoggerArgs2, LoggerContext2, LoggerReturn1> {
-  getLogData(...args: LoggerArgs2): LoggerReturn1 {
-    return args
+class SampleLogger2 extends Logger<
+  LoggerArgs2,
+  LoggerContext2,
+  LoggerReturn2,
+  LoggerReturnContext2
+> {
+  buildEventPayload(
+    ...args: LoggerArgs2
+  ): BuildEventDataResult<LoggerReturn2, LoggerReturnContext2> {
+    return {
+      data: args,
+      context: this.context,
+      error: this.getFirstError(...args),
+    }
   }
 
-  getLogError(...args: LoggerArgs2): Error | undefined {
+  getFirstError(...args: LoggerArgs2): Error | undefined {
     const payload = args[0]
     const data = payload.data
     const error = data.find((item: any) => item instanceof Error)
@@ -79,15 +113,24 @@ const logger2 = new SampleLogger2({
   level: 'DEBUG',
 })
 
-class SampleLayout2 extends Layout<LoggerReturn2, LogWriterParam, LoggerContext2, LogWriterConfig> {
-  format(event: LogEvent<LoggerReturn2, LoggerContext2>): LogWriterParam {
+class SampleLayout2 extends Layout<
+  LoggerReturn2,
+  LogWriterParam,
+  LoggerReturnContext2,
+  LogWriterConfig
+> {
+  format(event: LogEvent<LoggerReturn2, LoggerReturnContext2>): LogWriterParam {
     const param = event.data[0].data
     const filename: string = event.data[0].filename
     return { filename: filename, data: param.join(': ') }
   }
 }
-
-logWriter.register(logger2.loggerName, 'DEBUG', SampleLayout2)
+const layout2 = new SampleLayout2({
+  loggerName: logger2.loggerName,
+  logWriterName: logWriter.name,
+  logWriterConfig: logWriter.config,
+})
+logWriter.register(logger2.loggerName, 'DEBUG', layout2)
 
 logger1.addContext('filename', 'test1.log')
 logger1.info(`logger1`, `filename context test1.log`, `${new Date().toISOString()}`)
