@@ -13,3 +13,5 @@
 **/.env
 **/dist
 /logs/**
+
+**/.memsearch
