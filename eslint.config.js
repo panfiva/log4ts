@@ -16,7 +16,9 @@ export default defineConfig([
       ecmaVersion: 'latest',
       parserOptions: {
         tsconfigRootDir: import.meta.dirname,
-        projectService: true,
+        projectService: {
+          allowDefaultProject: ['*.js', '*.mjs', '*.cjs'],
+        },
       },
     },
   },
