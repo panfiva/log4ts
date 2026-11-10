@@ -1,6 +1,7 @@
 import { LogWriter, ShutdownCb } from '../logWriter'
 
 import { RollingFileWriteStream } from '../rollingFileStream/RollingFileWriteStream'
+import type { ForceRollOptions } from '../rollingFileStream/types'
 import { ansiRegex } from '../utils/ansiRegex'
 import * as path from 'path'
 import * as os from 'os'
@@ -125,6 +126,27 @@ export class FileLogWriter extends LogWriter<FileLogWriterData, FileLogWriterCon
         className: this.constructor.name,
         logWriterName: this.name,
       })
+    }
+  }
+
+  /**
+   * Rolls the log file on demand: `<name>.log` becomes `<name>.log.1`, older backups shift up
+   * by one and backups beyond `opts.backups` (default: configured `backups`) are deleted.
+   *
+   * The roll happens after every write issued before this call; writes issued after this call
+   * land in the new file. An empty file is not rolled unless `opts.rollEmpty` is true.
+   * Rejects on I/O failure.
+   *
+   * To roll only on demand, pass `maxLogSize: 0` in the config (default is 1 MB).
+   */
+  async roll(opts?: ForceRollOptions): Promise<void> {
+    // tracked as an active write so that a shutdown waits for the roll
+    const pointer = {}
+    this.activeWrites.add(pointer)
+    try {
+      await this.writer.forceRoll(opts)
+    } finally {
+      this.activeWrites.delete(pointer)
     }
   }
 
