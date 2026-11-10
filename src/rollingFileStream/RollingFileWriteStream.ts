@@ -14,6 +14,7 @@ import type {
   RollingFileWriteStreamOptions,
   FileNameParserFn,
   ParsedFilename,
+  ForceRollOptions,
 } from './types'
 
 import { asString } from 'date-format'
@@ -50,6 +51,15 @@ export class RollingFileWriteStream extends Writable {
   }
 
   options: RollingFileWriteStreamConfigs
+
+  /**
+   * Pending `forceRoll` requests, keyed by the zero-length marker chunk that was written
+   * to this stream to hold the request's place in the write queue
+   */
+  private rollRequests = new Map<
+    Buffer,
+    { opts: ForceRollOptions; resolve: () => void; reject: (e: unknown) => void }
+  >()
 
   constructor(filePath: string, options: RollingFileWriteStreamOptions) {
     debug(`constructor: creating RollingFileWriteStream. path=${filePath}`)
@@ -173,6 +183,25 @@ export class RollingFileWriteStream extends Writable {
    * after callback is executed
    */
   _write(chunk: any, encoding: BufferEncoding, callback: (error?: Error | null) => void): void {
+    // a marker chunk from `forceRoll`: run the roll here, in write order
+    const rollRequest = this.rollRequests.get(chunk)
+    if (rollRequest) {
+      this.rollRequests.delete(chunk)
+      this._runForceRoll(rollRequest.opts).then(
+        () => {
+          callback()
+          rollRequest.resolve()
+        },
+        (e) => {
+          // do not pass the error to `callback`: that would destroy the stream
+          // and discard the writes queued behind the roll
+          callback()
+          rollRequest.reject(e)
+        }
+      )
+      return
+    }
+
     this._shouldRoll().then(() => {
       debug(
         `_write: writing chunk. ` +
@@ -208,16 +237,80 @@ export class RollingFileWriteStream extends Writable {
     return this.options.maxSize !== 0 && this.state.currentSize >= this.options.maxSize
   }
 
-  private _roll() {
+  /** @param backups overrides `options.backups` for this roll */
+  private _roll(backups?: number) {
     debug(`_roll: closing the current stream`)
     return new Promise((resolve, reject) => {
       this.currentFileStream.end('', this.options.encoding, () => {
-        this._moveOldFiles().then(resolve).catch(reject)
+        this._moveOldFiles(backups).then(resolve).catch(reject)
       })
     })
   }
 
-  private async _moveOldFiles() {
+  /**
+   * Rolls the current file on demand, regardless of size or date.
+   *
+   * The roll is queued behind all writes issued before this call, and writes issued after
+   * this call land in the new file. After the roll, `<name>.log` is a fresh empty file,
+   * existing backups are shifted up by one and backups beyond `backups` are deleted.
+   *
+   * By default, an empty current file is not rolled (see `rollEmpty`).
+   *
+   * Rejects on I/O failure; the stream stays usable and queued writes are not lost.
+   */
+  forceRoll(opts: ForceRollOptions = {}): Promise<void> {
+    if (this.writableEnded || this.destroyed) {
+      return Promise.reject(new Error(`Cannot roll ${this.filePath}: stream is closed`))
+    }
+    const { backups } = opts
+    if (backups !== undefined && (!Number.isInteger(backups) || backups < 0)) {
+      return Promise.reject(new Error(`opts.backups (${backups}) should be an integer >= 0`))
+    }
+
+    return new Promise<void>((resolve, reject) => {
+      // a zero-length chunk with its own identity keeps the roll in the Writable's serial queue
+      const marker = Buffer.alloc(0)
+      this.rollRequests.set(marker, { opts, resolve, reject })
+      this.write(marker, (err) => {
+        // only called with an error if the stream was destroyed before the roll was reached
+        if (err && this.rollRequests.delete(marker)) reject(err)
+      })
+    })
+  }
+
+  /** executed by `_write`, i.e. after all earlier writes have completed */
+  private async _runForceRoll(opts: ForceRollOptions) {
+    try {
+      if (!opts.rollEmpty && (await this._currentFileSize()) === 0) {
+        debug(`_runForceRoll: current file is empty; nothing to roll`)
+        return
+      }
+      await this._roll(opts.backups)
+    } catch (e) {
+      // `_roll` ends the current file stream before moving files; if it failed after that
+      // point, reopen the current file so that queued writes do not go to an ended stream
+      if (this.currentFileStream.writableEnded || this.currentFileStream.destroyed) {
+        try {
+          this._renewWriteStream()
+        } catch (renewError) {
+          debug(`_runForceRoll: could not reopen current file: ${renewError}`)
+        }
+      }
+      throw e
+    }
+  }
+
+  private async _currentFileSize() {
+    const filePath = this.fileNameFormatter({ date: this.state.currentDate, index: 0 })
+    try {
+      return (await fs.stat(filePath)).size
+    } catch (e: any) {
+      if (e.code === 'ENOENT') return 0
+      throw e
+    }
+  }
+
+  private async _moveOldFiles(backups: number | undefined = this.options.backups) {
     const files = await this._getExistingFiles()
     const todaysFiles = this.state.currentDate
       ? files.filter((f) => f.date === this.state.currentDate)
@@ -258,15 +351,15 @@ export class RollingFileWriteStream extends Writable {
 
       // current log file
       if (i === 0) {
-        if (this.options.backups === 0) await fs.truncate(sourceFilePath, 0)
+        if (backups === 0) await fs.truncate(sourceFilePath, 0)
         else await fs.rename(sourceFilePath, targetFilePath)
       }
       // unlimited backups = rename current file
-      else if (this.options.backups === undefined) {
+      else if (backups === undefined) {
         await fs.rename(sourceFilePath, targetFilePath)
       }
       // backup slot is available
-      else if (this.options.backups > i) {
+      else if (backups > i) {
         await fs.rename(sourceFilePath, targetFilePath)
       }
       // no backup slot is available

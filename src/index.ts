@@ -11,6 +11,7 @@ export {
 export { Logger, TransformFunctionReturn } from './logger'
 export { getLevelRegistry } from './level'
 export type * from './types'
+export type { ForceRollOptions } from './rollingFileStream/types'
 export { shutdown } from './eventBus'
 export { LogEvent } from './logEvent'
 

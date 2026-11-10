@@ -74,6 +74,7 @@ All examples are configured with process signal listeners to demonstrate event h
   - Dynamically define which file will be used based on data attributes
   - Set and use logger context
   - Explicitly define layout function data type to infer its parameters
+  - Roll a file on demand with `roll()`
 
 - [Splunk HEC Log Writer](./src/examples/splunkHec.ts)
   - Constrain log function args to specific data shape
@@ -91,6 +92,52 @@ All examples are configured with process signal listeners to demonstrate event h
 
 - [Console Log Writer with Color](./src/examples/consoleLogger.ts)
   - Writing to console log with color
+
+## Rolling files on demand
+
+Besides rolling by size, file writers can roll a file at a time of your choosing, for example when
+a service run finishes. `<name>.log` is always the current file, and `<name>.log.1`, `<name>.log.2`, ...
+are the previous ones (up to `backups`).
+
+- `FileLogWriter.roll(opts?)`
+- `MultiFileLogWriter.roll(filename, opts?)` - `filename` is relative to `baseDir`, same as the
+  `filename` of the write payload
+- `RollingFileWriteStream.forceRoll(opts?)` - the underlying stream method
+
+```ts
+const writer = new FileLogWriter('run-log', {
+  filename: './logs/service.log',
+  maxLogSize: 0, // disable size rolling (default is 1 MB); only roll() rolls the file
+  backups: 5,
+})
+
+// ... service run: log events ...
+
+await writer.roll() // service.log -> service.log.1, fresh empty service.log
+await writer.roll({ backups: 1 }) // keep only service.log.1 after this roll
+
+// MultiFileLogWriter: pass the file name
+await multiWriter.roll('test1.log', { rollEmpty: true })
+```
+
+`opts` (`ForceRollOptions`):
+
+- `backups` - number of backups to keep; applies to this roll only and overrides the configured value
+- `rollEmpty` - an empty current file is not rolled by default, so it can never overwrite a real
+  `<name>.log.1`; set to `true` to roll it anyway
+
+Behavior:
+
+- The roll happens after every write issued before `roll()`, and writes issued after `roll()` go to the
+  new file. `roll()` does not have to be awaited before writing again. `MultiFileLogWriter` keeps
+  `write()` and `roll()` calls for the same file in call order.
+- If a `MultiFileLogWriter` has no writer for the file yet (for example right after process start),
+  `roll()` creates one and rolls the file that is already on disk, such as a leftover from a crashed run.
+- `roll()` is safe before and after the idle `timeout` closed a `MultiFileLogWriter` child writer.
+- `roll()` rejects on I/O failure; the writer stays usable and queued writes are not lost.
+
+See [File Log Writer](./src/examples/file.ts) and [Multi-File Log Writer](./src/examples/multiFile.ts)
+for examples.
 
 ## Shutdown
 

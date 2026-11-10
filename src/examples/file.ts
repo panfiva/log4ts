@@ -53,3 +53,10 @@ fileWriter.register(logger, 'DEBUG', (event, logWriterName, _logWriterConfig) =>
 })
 
 logger.info('sample event')
+
+// force-roll the log file on demand (e.g. when a service run finishes):
+// './logs/test.txt' becomes './logs/test.txt.1' and a new empty './logs/test.txt' is created.
+// The roll happens after all events logged above have been written.
+fileWriter.roll().catch((err) => console.error('roll test.txt failed', err))
+
+logger.info('sample event 2')

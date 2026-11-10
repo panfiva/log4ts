@@ -89,3 +89,16 @@ logger1.info(`logger 1 message`, `${new Date().toISOString()}`)
 logger2.info(`logger 2 message`, `${new Date().toISOString()}`)
 logger3.info({ fileName: 'test1.log', data: `logger 3.1 message: ${new Date().toISOString()}` })
 logger3.info({ fileName: 'test2.log', data: `logger 3.2 message: ${new Date().toISOString()}` })
+
+// Example 4 - roll a file on demand (e.g. when a service run finishes):
+// everything logged to 'test1.log' above ends up in 'test1.log.1', and messages logged after
+// the call go to the new 'test1.log'. `roll()` does not have to be awaited before logging again.
+// File name is relative to `baseDir`, same as `filename` in the write payload.
+logWriter.roll('test1.log').catch((err) => console.error('roll test1.log failed', err))
+
+logger3.info({
+  fileName: 'test1.log',
+  data: `logger 3.3 message (after roll): ${new Date().toISOString()}`,
+})
+
+logger3.info({ fileName: 'test2.log', data: `logger 3.4 message: ${new Date().toISOString()}` })
