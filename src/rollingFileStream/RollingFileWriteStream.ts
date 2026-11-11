@@ -202,7 +202,7 @@ export class RollingFileWriteStream extends Writable {
       return
     }
 
-    this._shouldRoll().then(() => {
+    const writeChunk = () => {
       debug(
         `_write: writing chunk. ` +
           `file=${this.currentFileStream.path} ` +
@@ -213,6 +213,15 @@ export class RollingFileWriteStream extends Writable {
         this.state.currentSize += chunk.length
         callback(e)
       })
+    }
+
+    this._shouldRoll().then(writeChunk, (e) => {
+      // do not pass the error to `callback`: that would destroy the stream and discard the
+      // writes queued behind this one. Keep the chunk (the current file stays over its limit,
+      // so the next write retries the roll) and report the failure as a stream error.
+      this._reopenEndedFileStream()
+      writeChunk()
+      this.emit('error', e)
     })
   }
 
@@ -287,16 +296,22 @@ export class RollingFileWriteStream extends Writable {
       }
       await this._roll(opts.backups)
     } catch (e) {
-      // `_roll` ends the current file stream before moving files; if it failed after that
-      // point, reopen the current file so that queued writes do not go to an ended stream
-      if (this.currentFileStream.writableEnded || this.currentFileStream.destroyed) {
-        try {
-          this._renewWriteStream()
-        } catch (renewError) {
-          debug(`_runForceRoll: could not reopen current file: ${renewError}`)
-        }
-      }
+      this._reopenEndedFileStream()
       throw e
+    }
+  }
+
+  /**
+   * `_roll` ends the current file stream before moving files; if it failed after that
+   * point, reopen the current file so that queued writes do not go to an ended stream
+   */
+  private _reopenEndedFileStream() {
+    if (this.currentFileStream.writableEnded || this.currentFileStream.destroyed) {
+      try {
+        this._renewWriteStream()
+      } catch (renewError) {
+        debug(`_reopenEndedFileStream: could not reopen current file: ${renewError}`)
+      }
     }
   }
 
