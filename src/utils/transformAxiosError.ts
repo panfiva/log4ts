@@ -67,7 +67,7 @@ export function transformAxiosError(
   const headers =
     typeof e.response?.headers?.toJSON === 'function' ? e.response.headers.toJSON() : undefined
 
-  let ret: AxiosErrorExport = {} as any
+  let ret: AxiosErrorExport
 
   const e3 = {
     name: 'AxiosError',
