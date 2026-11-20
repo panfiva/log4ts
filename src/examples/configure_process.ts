@@ -1,25 +1,70 @@
 import debugLib from 'debug'
 const debug = debugLib('log4ts:configure_process')
 
-import { Logger, ConsoleLogWriter, shutdown } from '..'
+import {
+  Logger,
+  ConsoleLogWriter,
+  shutdown,
+  Layout,
+  LogEvent,
+  ConsoleLogWriterConfig,
+  ConsoleLogWriterParam,
+  BuildEventDataResult,
+} from '..'
 
 type Seconds = number
 
-export const configure_process = (/** duration in seconds before exit */ duration?: Seconds) => {
-  type LoggerData = any[]
-  type WriterData = any[]
+type LoggerArgs = any
+type LoggerReturnData = any
+type LogWriterParam = ConsoleLogWriterParam
+type LogWriterConfig = ConsoleLogWriterConfig
+type LoggerContext = any
+type LoggerReturnContext = any
 
-  const logger = new Logger<LoggerData, never>({
-    level: 'DEBUG',
-    loggerName: 'node_process_logger',
-    useCallStack: false,
-  })
+class ProcessLogger extends Logger<
+  LoggerArgs,
+  LoggerContext,
+  LoggerReturnData,
+  LoggerReturnContext
+> {
+  buildEventPayload(
+    ...args: LoggerArgs
+  ): BuildEventDataResult<LoggerReturnData, LoggerReturnContext> {
+    return {
+      data: args,
+      context: this.context,
+      error: this.getFirstError(...args),
+    }
+  }
+}
 
-  const logWriter = new ConsoleLogWriter<WriterData>('node_process_writer')
+const logger = new ProcessLogger({
+  level: 'DEBUG',
+  loggerName: 'node_process_logger',
+  useCallStack: false,
+  context: {},
+})
 
-  logWriter.register(logger, 'DEBUG', (event) => {
+class Layout_Console extends Layout<
+  LoggerReturnData,
+  LogWriterParam,
+  LoggerContext,
+  LogWriterConfig
+> {
+  format(event: LogEvent<LoggerArgs, LoggerContext>): LogWriterParam {
     return [`[node_process_writer]:`, event.startTime, `[${event.level.levelName}]`, ...event.data]
+  }
+}
+
+const logWriter = new ConsoleLogWriter<LoggerArgs>('node_process_writer')
+
+export const configure_process = (/** duration in seconds before exit */ duration?: Seconds) => {
+  const layout = new Layout_Console({
+    loggerName: logger.loggerName,
+    logWriterName: logWriter.name,
+    logWriterConfig: logWriter.config,
   })
+  logWriter.register(logger.loggerName, 'DEBUG', layout)
 
   const process_signal_handler = (
     reason: 'SIGINT' | 'SIGTERM' | 'uncaughtException' | 'unhandledRejection'

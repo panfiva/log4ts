@@ -33,14 +33,13 @@ export type FileLogWriterConfig = {
 }
 
 /** data accepted by logWriter */
-type FileLogWriterData = string
+export type FileLogWriterParam = string
 
-export class FileLogWriter extends LogWriter<FileLogWriterData, FileLogWriterConfig> {
-  config: Required<FileLogWriterConfig>
+export class FileLogWriter extends LogWriter<FileLogWriterParam, FileLogWriterConfig> {
   private writer: RollingFileWriteStream
 
   constructor(name: string, config: FileLogWriterConfig) {
-    super(name)
+    super({ name, config })
 
     if (typeof config.filename !== 'string' || config.filename.length === 0) {
       throw new Error(`Invalid filename: ${config.filename}`)
@@ -109,12 +108,11 @@ export class FileLogWriter extends LogWriter<FileLogWriterData, FileLogWriterCon
     return stream
   }
 
-  protected _write = (data: FileLogWriterData): void => {
+  protected _write = (data: FileLogWriterParam): void => {
     if (!this.writer.writable) {
       return
     }
     if (this.config.removeColor === true) {
-      // eslint-disable-next-line no-param-reassign
       data = data.replace(ansiRegex(), '')
     }
 

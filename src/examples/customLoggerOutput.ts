@@ -1,9 +1,12 @@
-/*
-export DEBUG=
-yarn run build && node ./dist/examples/customLoggerOutput.js
-*/
-
-import { Logger, ConsoleLogWriter } from '..'
+import {
+  Logger,
+  ConsoleLogWriter,
+  ConsoleLogWriterConfig,
+  ConsoleLogWriterParam,
+  Layout,
+  LogEvent,
+  BuildEventDataResult,
+} from '..'
 
 import { configure_process } from './configure_process'
 
@@ -12,31 +15,72 @@ import { configure_process } from './configure_process'
 configure_process(2)
 
 /** first logger input - one string arg */
-type TDataIn = [string]
+type LoggerArgs_1 = [string]
 
 /** second logger input - one record arg */
-type TCustomDataIn = [{ data: string; type: 't1' | 't2' }]
+type LoggerArgs_2 = [{ data: string; type: 't1' | 't2' }]
 
 /** both loggers must return the same data */
-type TOut = string
+type LoggerReturnData = string
 
-const logger = new Logger<TDataIn, never, TOut>({ loggerName: 'L', level: 'INFO' })
-const writer = new ConsoleLogWriter('W2')
+type LogWriterParam = ConsoleLogWriterParam
+type LogWriterConfig = ConsoleLogWriterConfig
+type LoggerContext = any
+type LoggerReturnContext = any
 
-writer.register(logger, 'INFO', (event, _writerName, _writerConfig) => {
-  return [event.data[0].concat('!')]
-})
-
-class Logger2 extends Logger<TCustomDataIn, never, TOut> {
-  // must return same data type as returned by the main class
-  transform = (...data: TCustomDataIn): { data: TOut; error?: Error } => {
-    return { data: JSON.stringify(data[0]), error: undefined }
+class Logger1 extends Logger<LoggerArgs_1, LoggerContext, LoggerReturnData, LoggerReturnContext> {
+  // this logger accepts one parameter - string
+  // no transformation is needed
+  buildEventPayload(
+    ...args: LoggerArgs_1
+  ): BuildEventDataResult<LoggerReturnData, LoggerReturnContext> {
+    return {
+      data: args[0],
+      context: this.context,
+      error: this.getFirstError(...args),
+    }
   }
 }
 
-// must use the same class name as parent class
-// do NOT register this class with any event listeners since parent is registered
-const logger2 = new Logger2({ loggerName: logger.loggerName, level: 'INFO' })
+class Logger2 extends Logger<LoggerArgs_2, LoggerContext, LoggerReturnData, LoggerReturnContext> {
+  // this logger accepts one parameter - object
+  // so we convert this object to string and return it
+  // this will make return consistent with Logger1's return
+  buildEventPayload(
+    ...args: LoggerArgs_2
+  ): BuildEventDataResult<LoggerReturnData, LoggerReturnContext> {
+    return {
+      data: JSON.stringify(args[0]),
+      context: this.context,
+      error: this.getFirstError(...args),
+    }
+  }
+}
 
-logger.info('test1')
+const LOGGER_NAME = 'Logger Name'
+
+const logger1 = new Logger1({ loggerName: LOGGER_NAME, level: 'INFO' })
+const logger2 = new Logger2({ loggerName: LOGGER_NAME, level: 'INFO' })
+
+class ConsoleLogLayout extends Layout<
+  LoggerReturnData,
+  LogWriterParam,
+  LoggerReturnContext,
+  LogWriterConfig
+> {
+  format(event: LogEvent<LoggerReturnData, LoggerReturnContext>): LogWriterParam {
+    return [event.data]
+  }
+}
+
+const writer = new ConsoleLogWriter('console-writer')
+const layout = new ConsoleLogLayout({
+  loggerName: LOGGER_NAME,
+  logWriterName: writer.name,
+  logWriterConfig: writer.config,
+})
+
+writer.register(LOGGER_NAME, 'INFO', layout)
+
+logger1.info('test1')
 logger2.info({ data: 'test2', type: 't2' })

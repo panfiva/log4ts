@@ -22,7 +22,7 @@ export type SplunkHecLogWriterConfig = {
   token: string
 }
 
-export type SplunkData<T extends Record<string, any>> = {
+export type SplunkHecLogWriterParam<T extends Record<string, any>> = {
   time: number
   host: string
   sourcetype: 'json'
@@ -31,17 +31,11 @@ export type SplunkData<T extends Record<string, any>> = {
   event: T
 }
 
-type TConfigA = SplunkHecLogWriterConfig
-
 export class SplunkHecLogWriter<
-  TFormattedData extends SplunkData<Record<string, any>>,
-> extends LogWriter<TFormattedData, TConfigA> {
-  config: TConfigA
-
-  constructor(name: string, config: TConfigA) {
-    super(name)
-
-    this.config = config
+  LogWriterParam extends SplunkHecLogWriterParam<Record<string, any>>,
+> extends LogWriter<LogWriterParam, SplunkHecLogWriterConfig> {
+  constructor(name: string, config: SplunkHecLogWriterConfig) {
+    super({ name, config })
 
     debug(`[${this.name}]: initializing log writer for ${this.config.baseURL}`)
   }
@@ -69,7 +63,7 @@ export class SplunkHecLogWriter<
     return obj
   }
 
-  protected _write = async (data: TFormattedData) => {
+  protected _write = async (data: LogWriterParam) => {
     const payload = { ...data }
     if (!payload.source.startsWith('http:')) payload.source = `http:${payload.source}`
 

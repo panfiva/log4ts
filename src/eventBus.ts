@@ -7,7 +7,6 @@ import type { Worker, Cluster } from 'cluster'
 import type { LogEvent } from './logEvent'
 import type { LevelName, LoggerArg } from './types'
 import type { LogWriter, ShutdownCb } from './logWriter'
-import type { Logger } from './logger'
 
 let _cluster: Cluster | false | undefined = undefined
 let _eventBus: EventBus | undefined = undefined
@@ -17,11 +16,10 @@ export type EventListenerConfig<
   TContext extends Record<string, any>,
   TFormattedData,
   TConfigA extends Record<string, any>,
-  TDataOut extends Array<LoggerArg> = TData,
 > = {
   levelName: LevelName
   listener: (event: LogEvent<TData, TContext>) => void
-  logger: Logger<TData, TContext, TDataOut>
+  loggerName: string
   logWriter: LogWriter<TFormattedData, TConfigA>
 }
 
@@ -65,10 +63,6 @@ export async function shutdown(callback?: ShutdownCb): Promise<void> {
 class EventBus extends EventEmitter<'log4ts:pause'> {
   private _logWriterListeners: EventListenerConfig<any, any, any, any>[] = []
 
-  private _logWriters: Map<string, LogWriter<any, any>> = new Map()
-
-  private _loggers: Map<string, Logger<any, any, any>> = new Map()
-
   cluster: Cluster | false
 
   /**  indicates if message sending is disabled */
@@ -106,13 +100,17 @@ class EventBus extends EventEmitter<'log4ts:pause'> {
     return (this.cluster && this.cluster.isPrimary) || !this.cluster
   }
 
+  /**
+   * Forwards LogEvent to all registered listeners that match the following conditions:
+   * - match logger name from the LogEvent record
+   * - have LogEvent.levelName equal or greater than registered listener
+   */
   private sendToListeners = (logEvent: LogEvent<any, any>) => {
     if (!this.enabled) return
 
     const listeners = this._logWriterListeners.filter(
       (v) =>
-        v.logger.loggerName === logEvent.loggerName &&
-        logEvent.level.isGreaterThanOrEqualTo(v.levelName)
+        v.loggerName === logEvent.loggerName && logEvent.level.isGreaterThanOrEqualTo(v.levelName)
     )
 
     listeners.forEach((conf) => conf.listener(logEvent))
@@ -145,29 +143,22 @@ class EventBus extends EventEmitter<'log4ts:pause'> {
     }
   }
 
-  /** adds message listener */
-  addMessageListener(
-    conf: EventListenerConfig<any, any, any, any> & {
-      logWriter: LogWriter<any, any>
-    }
-  ) {
-    const { logWriter, levelName, listener, logger } = conf
+  /**
+   * creates event listener function and attaches it to event bus
+   */
+  addMessageListener(conf: EventListenerConfig<any, any, any, any>) {
+    const { logWriter, levelName, listener, loggerName } = conf
 
-    const registeredWriter = this._logWriters.get(logWriter.name)
-    if (registeredWriter && registeredWriter !== logWriter) {
-      throw new Error(`Duplicate logWriter name '${logWriter.name}' detected`)
-    }
-
-    const registeredLogger = this._loggers.get(logger.loggerName)
-    if (registeredLogger && registeredLogger !== logger) {
-      throw new Error(`Duplicate logger name '${logger.loggerName}' detected`)
+    const existingCombination = this._logWriterListeners.find(
+      (conf) => conf.loggerName === loggerName && conf.logWriter.name === logWriter.name
+    )
+    if (existingCombination) {
+      throw new Error(
+        `Duplicate Logger / LogWriter combination: '${loggerName}' / '${logWriter.name}'`
+      )
     }
 
-    this._logWriterListeners.push({ levelName, listener, logger, logWriter })
-
-    this._logWriters.set(logWriter.name, logWriter)
-
-    this._loggers.set(logger.loggerName, logger)
+    this._logWriterListeners.push({ levelName, listener, loggerName, logWriter })
   }
 
   public async shutdown(callback?: ShutdownCb) {
@@ -175,7 +166,7 @@ class EventBus extends EventEmitter<'log4ts:pause'> {
 
     this.enabled = false
 
-    const logWritersToCheck = Array.from(this._logWriters.values())
+    const logWritersToCheck = Array.from(new Set(this._logWriterListeners.map((v) => v.logWriter)))
 
     const logWriters = logWritersToCheck.length
 

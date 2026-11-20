@@ -1,9 +1,12 @@
-/*
-export DEBUG=log4ts:logWriter:multiFileLogWriter,log4ts:logWriter:shutdown,log4ts:logWriter:file
-yarn run build && node ./dist/examples/multiFile.js
-*/
-
-import { Logger, MultiFileLogWriter, MultiFileLogWriterOptions, LayoutFnInferred } from '..'
+import {
+  Logger,
+  Layout,
+  LogEvent,
+  MultiFileLogWriter,
+  MultiFileLogWriterConfig,
+  MultiFileLogWriterParam,
+  BuildEventDataResult,
+} from '..'
 
 import { configure_process } from './configure_process'
 
@@ -11,7 +14,7 @@ import { configure_process } from './configure_process'
 // see function configurations to see how process events can be handled
 configure_process(6)
 
-const options: MultiFileLogWriterOptions = {
+const options: MultiFileLogWriterConfig = {
   baseDir: './logs',
   // file stream will close 2 seconds after last event
   // file stream will reopen if a new event is received
@@ -20,85 +23,143 @@ const options: MultiFileLogWriterOptions = {
   backups: 1,
 }
 
+type LogWriterParam = MultiFileLogWriterParam
+type LogWriterConfig = MultiFileLogWriterConfig
+
+// file name will be set from context
+type LoggerArgs1 = (string | number | boolean | object)[]
+type LoggerReturn1 = LoggerArgs1
+type LoggerContext1 = { filename: string }
+type LoggerReturnContext1 = LoggerContext1
+
 const logWriter = new MultiFileLogWriter('writer-name', options)
 
-/** one or more arguments of string, number or boolean type */
-type LoggerPayload = (string | number | boolean)[]
+class SampleLogger1 extends Logger<
+  LoggerArgs1,
+  LoggerContext1,
+  LoggerReturn1,
+  LoggerReturnContext1
+> {
+  buildEventPayload(
+    ...args: LoggerArgs1
+  ): BuildEventDataResult<LoggerReturn1, LoggerReturnContext1> {
+    return {
+      data: args,
+      context: this.context,
+      error: this.getFirstError(...args),
+    }
+  }
+}
 
 // Example 1 - Add file name using context during logger creation
 // context value will be used in layoutFn
-const logger1 = new Logger<LoggerPayload, { filename: string }>({
-  loggerName: 'logger-name-1',
+const logger1 = new SampleLogger1({
+  loggerName: 'file-from-context',
   level: 'DEBUG',
   context: { filename: 'test1.log' },
 })
 
-// Example 1 - Add file name using context that is defined after logger is created
-// context value will be used in layoutFn
-const logger2 = new Logger<LoggerPayload, { filename: string }>({
-  loggerName: 'logger-name-2',
-  level: 'DEBUG',
+class SampleLayout1 extends Layout<
+  LoggerReturn1,
+  LogWriterParam,
+  LoggerReturnContext1,
+  LogWriterConfig
+> {
+  format(event: LogEvent<LoggerReturn1, LoggerReturnContext1>): LogWriterParam {
+    const param = event.data
+    const filename: string = event.context.filename
+    return { filename: filename, data: param.join(': ') }
+  }
+}
+const layout1 = new SampleLayout1({
+  loggerName: logger1.loggerName,
+  logWriterName: logWriter.name,
+  logWriterConfig: logWriter.config,
 })
-logger2.addContext('filename', 'test2.log')
+logWriter.register(logger1.loggerName, 'DEBUG', layout1)
 
-// `LayoutFnInferred` is used to infer layout function parameters:
-// `event`, `_logWriterName`, `_logWriterConfig`
-// Can also use `LayoutFn` but it requires more input
-const layoutFn: LayoutFnInferred<typeof logger1, typeof logWriter> = (
-  event,
-  _logWriterName,
-  _logWriterConfig
-) => {
-  const param: (string | number | boolean)[] = event.data
-  const filename: string = event.context?.filename as string
-  return { filename: filename, data: param.join(': ') }
+// one parameter with data and filename
+type LoggerArgs2 = [{ filename: string; data: (string | number | boolean | object)[] }]
+type LoggerReturn2 = LoggerArgs2
+type LoggerContext2 = any
+type LoggerReturnContext2 = any
+
+class SampleLogger2 extends Logger<
+  LoggerArgs2,
+  LoggerContext2,
+  LoggerReturn2,
+  LoggerReturnContext2
+> {
+  buildEventPayload(
+    ...args: LoggerArgs2
+  ): BuildEventDataResult<LoggerReturn2, LoggerReturnContext2> {
+    return {
+      data: args,
+      context: this.context,
+      error: this.getFirstError(...args),
+    }
+  }
+
+  getFirstError(...args: LoggerArgs2): Error | undefined {
+    const payload = args[0]
+    const data = payload.data
+    const error = data.find((item: any) => item instanceof Error)
+    return error
+  }
 }
 
-logWriter.register(logger1, 'DEBUG', layoutFn)
-logWriter.register(logger2, 'DEBUG', layoutFn)
-
-/** only one argument {filename, data} is accepted */
-type LoggerPayload3 = [{ fileName: string; data: string | number | boolean | Record<string, any> }]
-
-// Example 3 - send filename inside logger call payload
-const logger3 = new Logger<LoggerPayload3>({
-  loggerName: 'logger-name-3',
+const logger2 = new SampleLogger2({
+  loggerName: 'file-from-data',
   level: 'DEBUG',
 })
 
-// LayoutFnInferred is used to infer layout function parameters
-// `event`, `_logWriterName`, `_logWriterConfig`
-// Can also use `LayoutFn` but it requires more input
-const layoutFn3: LayoutFnInferred<typeof logger3, typeof logWriter> = (
-  event,
-  _logWriterName,
-  _logWriterConfig
-) => {
-  // only one param is supported due to LoggerPayload3
-  const d = event.data[0]
-
-  const data: string = typeof d.data === 'object' ? JSON.stringify(d.data) : d.data.toString()
-
-  const filename: string = d.fileName
-  return { filename: filename, data: data }
+class SampleLayout2 extends Layout<
+  LoggerReturn2,
+  LogWriterParam,
+  LoggerReturnContext2,
+  LogWriterConfig
+> {
+  format(event: LogEvent<LoggerReturn2, LoggerReturnContext2>): LogWriterParam {
+    const param = event.data[0].data
+    const filename: string = event.data[0].filename
+    return { filename: filename, data: param.join(': ') }
+  }
 }
+const layout2 = new SampleLayout2({
+  loggerName: logger2.loggerName,
+  logWriterName: logWriter.name,
+  logWriterConfig: logWriter.config,
+})
+logWriter.register(logger2.loggerName, 'DEBUG', layout2)
 
-logWriter.register(logger3, 'DEBUG', layoutFn3)
+logger1.addContext('filename', 'test1.log')
+logger1.info(`logger1`, `filename context test1.log`, `${new Date().toISOString()}`)
 
-logger1.info(`logger 1 message`, `${new Date().toISOString()}`)
-logger2.info(`logger 2 message`, `${new Date().toISOString()}`)
-logger3.info({ fileName: 'test1.log', data: `logger 3.1 message: ${new Date().toISOString()}` })
-logger3.info({ fileName: 'test2.log', data: `logger 3.2 message: ${new Date().toISOString()}` })
+logger1.addContext('filename', 'test2.log')
+logger1.info(`logger1`, `filename context test2.log`, `${new Date().toISOString()}`)
 
-// Example 4 - roll a file on demand (e.g. when a service run finishes):
+logger2.info({
+  data: [`logger2`, `filename data test1.log`, `${new Date().toISOString()}`],
+  filename: 'test1.log',
+})
+
+logger2.info({
+  data: [`logger2`, `filename data test2.log`, `${new Date().toISOString()}`],
+  filename: 'test2.log',
+})
+
+// Example 2 - roll a file on demand (e.g. when a service run finishes):
 // everything logged to 'test1.log' above ends up in 'test1.log.1', and messages logged after
 // the call go to the new 'test1.log'. `roll()` does not have to be awaited before logging again.
 // File name is relative to `baseDir`, same as `filename` in the write payload.
 logWriter.roll('test1.log').catch((err) => console.error('roll test1.log failed', err))
 
-logger3.info({
-  fileName: 'test1.log',
-  data: `logger 3.3 message (after roll): ${new Date().toISOString()}`,
+logger2.info({
+  data: [`logger2`, `filename data test1.log (after roll)`, `${new Date().toISOString()}`],
+  filename: 'test1.log',
 })
 
-logger3.info({ fileName: 'test2.log', data: `logger 3.4 message: ${new Date().toISOString()}` })
+logger2.info({
+  data: [`logger2`, `filename data test2.log (after roll)`, `${new Date().toISOString()}`],
+  filename: 'test2.log',
+})

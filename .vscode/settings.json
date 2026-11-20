@@ -29,28 +29,14 @@
   "debug.showBreakpointsInOverviewRuler": false,
   "editor.glyphMargin": true,
   "diffEditor.renderIndicators": true,
-  "editor.minimap.enabled": false,
+  "editor.minimap.enabled": true,
   "search.useIgnoreFiles": false,
   "files.trimFinalNewlines": true,
   "files.eol": "\n",
   "prettier.endOfLine": "lf",
   "editor.insertSpaces": false,
   "editor.tabSize": 2,
-  "typescript.tsdk": "../../node_modules/typescript/lib",
+  "js/ts.tsdk.path": "../../node_modules/typescript/lib",
   "editor.wordBasedSuggestions": "off",
-  "editor.suggest.showSnippets": false,
-  "eslint.useFlatConfig": true,
-  "eslint.validate": ["javascript", "typescript"],
-  "cSpell.words": [
-    "allexport",
-    "deserialize",
-    "listeners",
-    "logWriter",
-    "multiprocess",
-    "panfiva",
-    "refid",
-    "serialize",
-    "sourcetype",
-    "yarnrc"
-  ]
+  "editor.suggest.showSnippets": false
 }

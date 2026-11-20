@@ -1,10 +1,10 @@
 {
   "name": "@panfiva/log4ts",
   "packageManager": "yarn@4.18.1",
-  "version": "0.0.23",
+  "version": "1.0.0",
   "description": "Port of log4js-node to TypeScript",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "main": "dist/index.js",
+  "typings": "dist/index.d.ts",
   "license": "MIT",
   "author": "Vadim Panfilov <vadim.panfilov@gmail.com>",
   "repository": {
@@ -26,9 +26,10 @@
   },
   "scripts": {
     "prettier": "prettier --config ./.prettierrc.mjs --write --list-different \"src/**/*.{js,jsx,json,ts,tsx,css,md,jsonc,mjs,cjs}\"",
-    "start": "yarn build && bash -c 'set -e; [ -f .env ] && set -o allexport && source .env && set +o allexport; tsc-watch --onSuccess \"node ./dist/index.js\"'",
+    "start": "yarn build && bash -c 'set -e; [ -f .env ] && set -o allexport && source .env && set +o allexport; tsc-watch --onSuccess \"node ${START_PATH:-./dist/index.js}\"'",
     "build": "tsc --build",
-    "update": "npx npm-check-updates  --deep --upgrade",
+    "update": "npx npm-check-updates@22.2.9 --deep --target minor --cooldown 2d --upgrade --format cooldown",
+    "update-major": "npx npm-check-updates@22.2.9 --deep --cooldown 2d --upgrade --format cooldown",
     "upgrade": "yarn set version stable && rm -f yarn.lock && yarn install",
     "rebuild": "yarn run clean; tsc --build",
     "clean": "rm -rf ./dist; rm -rf ./tsconfig.tsbuildinfo",
@@ -51,7 +52,7 @@
   },
   "dependencies": {
     "async-mutex": "^0.5.0",
-    "axios": "^1.21.0",
+    "axios": "^1.21.1",
     "date-format": "^4.0.14",
     "debug": "^4.4.3",
     "eventemitter3": "^5.0.4",
@@ -66,11 +67,11 @@
     "@types/lodash": "^4.17.27",
     "@types/node": "^26.6.6",
     "@typescript/native": "npm:typescript@^7.0.2",
-    "eslint": "^10.14.0",
-    "globals": "^17.13.0",
-    "prettier": "^3.9.10",
+    "eslint": "^10.15.0",
+    "globals": "^17.14.0",
+    "prettier": "^3.10.1",
     "tsc-watch": "^7.2.1",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
-    "typescript-eslint": "^8.72.1"
+    "typescript-eslint": "^8.73.0"
   }
 }

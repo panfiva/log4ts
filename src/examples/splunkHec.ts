@@ -6,7 +6,16 @@ export DEBUG=log4ts:logWriter:splunkHec,log4ts:configure_process,log4ts:logWrite
 yarn run build && node ./dist/examples/splunkHec.js
 */
 
-import { Logger, SplunkHecLogWriter, SplunkData, LevelName } from '..'
+import {
+  Logger,
+  SplunkHecLogWriter,
+  SplunkHecLogWriterParam,
+  SplunkHecLogWriterConfig,
+  LevelName,
+  Layout,
+  LogEvent,
+  BuildEventDataResult,
+} from '..'
 
 import { configure_process } from './configure_process'
 
@@ -45,48 +54,88 @@ type PayloadLogWriter = {
   logWriterName: string
 }
 
-type TransformedData = SplunkData<Payload & PayloadLogWriter>
-
-type EventPayload = Omit<SplunkData<Payload>, 'index' | 'time' | 'sourcetype' | 'event'> & Payload
+type EventPayload = Omit<
+  SplunkHecLogWriterParam<Payload>,
+  'index' | 'time' | 'sourcetype' | 'event'
+> &
+  Payload
 
 // force users to provide 2 values to log functions: index and event payload
-type SplunkLoggerParams = [index: string, event: EventPayload]
+type LoggerArgs = [index: string, event: EventPayload]
 
-const logger = new Logger<SplunkLoggerParams, never>({
+type LoggerReturnData = LoggerArgs
+type LogWriterParam = SplunkHecLogWriterParam<Payload & PayloadLogWriter>
+type LogWriterConfig = SplunkHecLogWriterConfig
+type LoggerContext = any
+type LoggerReturnContext = any
+
+class SampleLogger extends Logger<
+  LoggerArgs,
+  LoggerContext,
+  LoggerReturnData,
+  LoggerReturnContext
+> {
+  buildEventPayload(
+    ...args: LoggerArgs
+  ): BuildEventDataResult<LoggerReturnData, LoggerReturnContext> {
+    return {
+      data: args,
+      context: this.context,
+      error: this.getFirstError(...args),
+    }
+  }
+}
+
+const logger = new SampleLogger({
   loggerName: 'SplunkLogger',
   level: 'DEBUG',
+  context: {},
 })
 
-const logWriter = new SplunkHecLogWriter<TransformedData>('SplunkLogWriter', {
+const writer = new SplunkHecLogWriter<LogWriterParam>('SplunkLogWriter', {
   baseURL,
   token,
 })
 
-logWriter.register(logger, 'DEBUG', (event, logWriterName, _logWriterConfig) => {
-  const index = event.data[0]
-  const data = event.data[1]
+class SampleLayout extends Layout<
+  LoggerReturnData,
+  LogWriterParam,
+  LoggerReturnContext,
+  LogWriterConfig
+> {
+  format(event: LogEvent<LoggerReturnData, LoggerReturnContext>): LogWriterParam {
+    const index = event.data[0]
+    const data = event.data[1]
 
-  const { host, source, ...restData } = data
+    const { host, source, ...restData } = data
 
-  const eventPayload: Payload & PayloadLogWriter = {
-    ...restData,
-    severity: event.level.levelName,
-    loggerName: event.loggerName,
-    logWriterName,
-    platform: 'v2',
+    const eventPayload: Payload & PayloadLogWriter = {
+      ...restData,
+      severity: event.level.levelName,
+      loggerName: event.loggerName,
+      logWriterName: this.logWriterName,
+      platform: 'v2',
+    }
+
+    const ret: LogWriterParam = {
+      event: eventPayload,
+      host,
+      source,
+      sourcetype: 'json',
+      time: event.startTime.getTime() / 1000,
+
+      index,
+    }
+
+    return ret
   }
-
-  const ret: TransformedData = {
-    event: eventPayload,
-    host,
-    source,
-    sourcetype: 'json',
-    time: event.startTime.getTime() / 1000,
-    index,
-  }
-
-  return ret
+}
+const layout = new SampleLayout({
+  loggerName: logger.loggerName,
+  logWriterName: writer.name,
+  logWriterConfig: writer.config,
 })
+writer.register<LoggerReturnContext, LoggerReturnData>(logger.loggerName, 'TRACE', layout)
 
 const data: EventPayload = {
   type: 'exec',
@@ -110,4 +159,5 @@ const data: EventPayload = {
   },
 }
 
-logger.info('test', data)
+const INDEX = 'test'
+logger.info(INDEX, data)

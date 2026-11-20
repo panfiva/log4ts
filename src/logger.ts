@@ -8,11 +8,6 @@ import { getLevelRegistry } from './level'
 import { getEventBus } from './eventBus'
 import { defaultParseCallStack, ParseCallStackFunction } from './defaultParseCallStack'
 
-export type TransformFunctionReturn<T> = {
-  data: T
-  error?: Error | { message: string; stack?: string; [x: string]: any }
-}
-
 /**
  * The top entry is the Error
  */
@@ -22,17 +17,84 @@ const baseCallStackSkip = 1
  */
 const defaultErrorCallStackSkip = 3
 
+type ErrorLike =
+  | Error
+  | {
+      [x: string]: any
+      message: string
+      name?: string
+      stack?: string
+    }
+
+/**
+ * return type of `Logger.buildEventPayload()` and input of `Logger.generateLogEvent()`
+
+ */
+export type BuildEventDataResult<LoggerReturnData, LoggerReturnContext> = {
+  /** event data; produced by `buildEventPayload` function using logger context and logger call args */
+  data: LoggerReturnData
+  /** event context; produced by `buildEventPayload` function using logger context and logger call args */
+  context: LoggerReturnContext
+  /** event context; produced by `buildEventPayload` function using logger context and logger call args */
+  error: Error | ErrorLike | undefined
+}
+
+/**
+ * Returns a shallow copy of log event data that keeps its shape: arrays stay arrays and plain
+ * objects are copied, so a layout that modifies the data cannot change the original values.
+ * Primitives and non-plain objects (e.g. Error, Date, class instances) are passed through.
+ *
+ * Note: only the top level is copied; nested objects/arrays are still shared with the original.
+ */
+function copyEventData<T>(data: T): T {
+  if (Array.isArray(data)) return [...data] as T
+  if (data !== null && typeof data === 'object') {
+    const proto = Object.getPrototypeOf(data)
+    if (proto === Object.prototype || proto === null) return { ...data } as T
+  }
+  return data
+}
+
 /**
  * Logger to log messages.
  */
-export class Logger<
-  TData extends any[],
-  TContext extends Record<string, any> = never,
-  /** data format that is included in log event */
-  TDataOut = TData,
+export abstract class Logger<
+  /** parameters accepted by the log function */
+  LoggerArgs extends any[],
+  LoggerContext extends Record<string, any>,
+  /**
+   * data format that is included in log event;
+   * this data will be passed to Layout class
+   *
+   * returned by `getLogData` function
+   */
+  LoggerReturnData,
+  /** data included in log event context */
+  LoggerReturnContext extends Record<string, any>,
 > {
   /** logger name */
   loggerName: string
+
+  /**
+   * Returns logger with the same name but additional context.
+   * Note: Child classes should override this method to provide correct return typing.
+   */
+  withAddContext(options: Record<string, any>): this {
+    const newLogger = new (this.constructor as any)({
+      loggerName: this.loggerName,
+      level: this._level,
+      useCallStack: this.useCallStack,
+      context: { ...this.context, ...options },
+    }) as this
+
+    // Copy over other properties that might have been set
+    newLogger.callStackLinesToSkip = this.callStackLinesToSkip
+    if (this.parseCallStack !== defaultParseCallStack) {
+      newLogger.setParseCallStackFunction(this.parseCallStack)
+    }
+
+    return newLogger
+  }
 
   /** default log level for attached log writers */
   private _level: Level
@@ -40,13 +102,13 @@ export class Logger<
   /** indicates if callstack should be recorded  */
   useCallStack: boolean
 
-  context: TContext
+  context: LoggerContext
   private callStackSkipIndex = 0
 
   private parseCallStack: ParseCallStackFunction = defaultParseCallStack
 
-  constructor(param: LoggerConfig<TContext>) {
-    this.context = param.context ?? ({} as TContext) // allow to update later
+  constructor(param: LoggerConfig<LoggerContext>) {
+    this.context = param.context ?? ({} as any)
 
     const levelRegistry = getLevelRegistry()
 
@@ -93,20 +155,26 @@ export class Logger<
   }
 
   /**
-   * This function can be used to overwrite how messages are formatted.
-   * This is useful when different classes (with different input params)
-   * share the same class name.
+   * Called by Logger to convert log function arguments and context to LogEvent:
+   * - returns {data, context, error} to be attached to the event
+   * - event is generated `Logger.(logLevel, { data, context, error })`
    *
-   * @returns
-   * - `data` to be send as message payload
-   * - `error` that can be used for stacktrace (not used in payload)
+   * If function fails, error is added to console.log
    */
-  protected transform = (...args: TData): TransformFunctionReturn<TDataOut> => {
+  abstract buildEventPayload(
+    ...args: LoggerArgs
+  ): BuildEventDataResult<LoggerReturnData, LoggerReturnContext>
+
+  /**
+   * Utility function that can be used in custom loggers to find first error in args.
+   * Use in custom `buildEventPayload` functions as needed.
+   */
+  getFirstError(...args: LoggerArgs): Error | undefined {
     const error = args.find((item: any) => item instanceof Error)
-    return { data: args as any, error }
+    return error
   }
 
-  private log(level: LevelParam, ...args: TData) {
+  private log(level: LevelParam, ...args: LoggerArgs) {
     const levelRegistry = getLevelRegistry()
     const logLevel = levelRegistry.getLevel(level)
 
@@ -116,17 +184,36 @@ export class Logger<
     }
 
     if (this.isLevelEnabled(logLevel)) {
-      const transformedData = this.transform(...args)
-      this._log(logLevel, transformedData.data, transformedData.error)
+      let data: any = undefined
+      let error: any = undefined
+      let context: any = undefined
+      let hasError: boolean = false
+
+      try {
+        const eventData = this.buildEventPayload(...args)
+        data = eventData.data
+        error = eventData.error
+        context = eventData.context
+      } catch (e) {
+        hasError = true
+        console.error('error extracting event data', e)
+        console.log('event data', args)
+      }
+
+      if (!hasError) {
+        const logEvent = this.generateLogEvent(logLevel, { data, context, error })
+        const eventBus = getEventBus()
+        eventBus.send(logEvent)
+      }
     }
   }
 
-  trace = (...args: TData) => this.log('TRACE', ...args)
-  debug = (...args: TData) => this.log('DEBUG', ...args)
-  info = (...args: TData) => this.log('INFO', ...args)
-  warn = (...args: TData) => this.log('WARN', ...args)
-  error = (...args: TData) => this.log('ERROR', ...args)
-  fatal = (...args: TData) => this.log('FATAL', ...args)
+  trace = (...args: LoggerArgs) => this.log('TRACE', ...args)
+  debug = (...args: LoggerArgs) => this.log('DEBUG', ...args)
+  info = (...args: LoggerArgs) => this.log('INFO', ...args)
+  warn = (...args: LoggerArgs) => this.log('WARN', ...args)
+  error = (...args: LoggerArgs) => this.log('ERROR', ...args)
+  fatal = (...args: LoggerArgs) => this.log('FATAL', ...args)
 
   isLevelEnabled(otherLevel: LevelParam) {
     const loggerEnabled = this.level.isLessThanOrEqualTo(otherLevel)
@@ -138,12 +225,18 @@ export class Logger<
     return true
   }
 
-  private _log(
+  /**
+   * saves data and error as LogEvent and sends to event bus
+   *
+   * uses output of `buildEventPayload` method
+   */
+  protected generateLogEvent(
     level: LevelParam,
-    data: TDataOut,
-    error?: Error | { message: string; stack?: string; [x: string]: any }
+    payload: BuildEventDataResult<LoggerReturnData, LoggerReturnContext>
   ) {
     debug(`sending log data (${level}) to log writers`)
+
+    const { data, context, error } = payload
 
     let callStack
     if (this.useCallStack) {
@@ -161,32 +254,27 @@ export class Logger<
           this.callStackSkipIndex + defaultErrorCallStackSkip + baseCallStackSkip
         )
     }
-    const logEvent = new LogEvent({
+
+    type TLoggerContext = BuildEventDataResult<LoggerReturnData, LoggerReturnContext>['context']
+
+    const logEvent = new LogEvent<LoggerReturnData, TLoggerContext>({
       loggerName: this.loggerName,
       level: level,
-      data: data,
-      context: this.context,
+      data: copyEventData(data),
+      context: { ...context },
       location: callStack,
       error,
     })
-    const eventBus = getEventBus()
-    eventBus.send(logEvent)
+    return logEvent
   }
 
-  addContext<K extends TContext extends undefined ? never : keyof TContext>(
+  addContext<K extends (LoggerContext extends undefined ? never : keyof LoggerContext)>(
     key: K,
-    value: TContext[K]
+    value: LoggerContext[K]
   ): void
-  addContext(key: keyof TContext, value: any) {
+  addContext(key: keyof LoggerContext, value: any) {
+    // @ts-ignore
     this.context[key] = value
-  }
-
-  removeContext(key: string) {
-    delete this.context[key]
-  }
-
-  clearContext() {
-    this.context = {} as TContext
   }
 
   setParseCallStackFunction(parseFunction?: ParseCallStackFunction) {
