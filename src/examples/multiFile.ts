@@ -147,3 +147,19 @@ logger2.info({
   data: [`logger2`, `filename data test2.log`, `${new Date().toISOString()}`],
   filename: 'test2.log',
 })
+
+// Example 2 - roll a file on demand (e.g. when a service run finishes):
+// everything logged to 'test1.log' above ends up in 'test1.log.1', and messages logged after
+// the call go to the new 'test1.log'. `roll()` does not have to be awaited before logging again.
+// File name is relative to `baseDir`, same as `filename` in the write payload.
+logWriter.roll('test1.log').catch((err) => console.error('roll test1.log failed', err))
+
+logger2.info({
+  data: [`logger2`, `filename data test1.log (after roll)`, `${new Date().toISOString()}`],
+  filename: 'test1.log',
+})
+
+logger2.info({
+  data: [`logger2`, `filename data test2.log (after roll)`, `${new Date().toISOString()}`],
+  filename: 'test2.log',
+})

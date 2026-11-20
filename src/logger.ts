@@ -40,6 +40,22 @@ export type BuildEventDataResult<LoggerReturnData, LoggerReturnContext> = {
 }
 
 /**
+ * Returns a shallow copy of log event data that keeps its shape: arrays stay arrays and plain
+ * objects are copied, so a layout that modifies the data cannot change the original values.
+ * Primitives and non-plain objects (e.g. Error, Date, class instances) are passed through.
+ *
+ * Note: only the top level is copied; nested objects/arrays are still shared with the original.
+ */
+function copyEventData<T>(data: T): T {
+  if (Array.isArray(data)) return [...data] as T
+  if (data !== null && typeof data === 'object') {
+    const proto = Object.getPrototypeOf(data)
+    if (proto === Object.prototype || proto === null) return { ...data } as T
+  }
+  return data
+}
+
+/**
  * Logger to log messages.
  */
 export abstract class Logger<
@@ -244,7 +260,7 @@ export abstract class Logger<
     const logEvent = new LogEvent<LoggerReturnData, TLoggerContext>({
       loggerName: this.loggerName,
       level: level,
-      data: { ...data },
+      data: copyEventData(data),
       context: { ...context },
       location: callStack,
       error,
@@ -252,7 +268,7 @@ export abstract class Logger<
     return logEvent
   }
 
-  addContext<K extends LoggerContext extends undefined ? never : keyof LoggerContext>(
+  addContext<K extends (LoggerContext extends undefined ? never : keyof LoggerContext)>(
     key: K,
     value: LoggerContext[K]
   ): void

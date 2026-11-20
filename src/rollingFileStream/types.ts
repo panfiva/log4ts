@@ -87,3 +87,22 @@ export type RollingFileWriteStreamOptions = {
 }
 
 export type RollingFileSyncWriteStreamOptions = RollingFileWriteStreamOptions
+
+/**
+ * Options for an on-demand roll (`RollingFileWriteStream.forceRoll`,
+ * `FileLogWriter.roll`, `MultiFileLogWriter.roll`).
+ */
+export type ForceRollOptions = {
+  /**
+   * Number of backups (`<name>.log.1` ... `<name>.log.N`) to keep after this roll.
+   * Applies to this roll only; overrides the configured `backups` value.
+   * Anything beyond this number is deleted.
+   */
+  backups?: number
+  /**
+   * If `false` (default), rolling a file whose current size is 0 is a no-op, so an
+   * empty current file can never overwrite a real backup.
+   * Set to `true` to roll the file anyway.
+   */
+  rollEmpty?: boolean
+}

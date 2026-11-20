@@ -14,4 +14,4 @@
 **/dist
 /logs/**
 
-**/.memsearch
+.memsearch
